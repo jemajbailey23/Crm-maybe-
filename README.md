@@ -29,12 +29,24 @@ This app is built to deploy straight to **Vercel** with a hosted Postgres databa
 3. **Set environment variables** in the Vercel project settings:
    - `DATABASE_URL` — the connection string from step 1
    - `AUTH_SECRET` — a random secret (`openssl rand -hex 32`)
+   - `APP_URL` — your deployed URL (e.g. `https://your-app.vercel.app`), used to build links in emails
+   - `GMAIL_USER` / `GMAIL_APP_PASSWORD` — optional, see [Password recovery](#password-recovery) below
 4. **Deploy.** The build command (`prisma migrate deploy && next build`) automatically applies the database schema on every deploy — no manual migration step needed.
 5. Visit the deployed URL and create your account on the first-run signup page.
 
 ## Password recovery
 
-There's no self-service "forgot password" flow yet — this is a single-owner tool without email sending set up. If you're locked out, reset your password directly from the machine that has your production `DATABASE_URL`:
+The login page has a "Forgot your password?" link that emails a reset link, sent via your own Gmail account — no separate email service needed.
+
+**Setup (one-time):**
+
+1. Turn on 2-Step Verification on the Google account you want to send from, if it isn't already: [myaccount.google.com/security](https://myaccount.google.com/security).
+2. Create an **App Password**: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) — name it something like "CRM", copy the 16-character password it gives you.
+3. Set `GMAIL_USER` (that Gmail address) and `GMAIL_APP_PASSWORD` (the app password, not your normal Gmail password) as environment variables.
+
+If those aren't set (e.g. in local dev), reset links are logged to the server console instead of emailed — the flow still works, you just read the link from the terminal instead of your inbox.
+
+**Fallback:** if you're ever locked out and email isn't working, you can always reset a password directly against the database:
 
 ```bash
 DATABASE_URL="<your production connection string>" npm run reset-password -- you@example.com newpassword123

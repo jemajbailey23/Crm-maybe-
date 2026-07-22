@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes, createHash } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -7,6 +8,11 @@ import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE = "crm_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000; // 1 hour
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 function getSecretKey() {
   const secret = process.env.AUTH_SECRET;
@@ -71,4 +77,30 @@ export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   return user;
+}
+
+export async function createPasswordResetToken(userId: string) {
+  const rawToken = randomBytes(32).toString("hex");
+
+  await prisma.passwordResetToken.deleteMany({ where: { userId } });
+  await prisma.passwordResetToken.create({
+    data: {
+      userId,
+      tokenHash: hashToken(rawToken),
+      expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
+    },
+  });
+
+  return rawToken;
+}
+
+export async function consumePasswordResetToken(rawToken: string) {
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashToken(rawToken) },
+  });
+
+  if (!record || record.expiresAt < new Date()) return null;
+
+  await prisma.passwordResetToken.delete({ where: { id: record.id } });
+  return record.userId;
 }
