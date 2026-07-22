@@ -13,7 +13,7 @@ Requires a local or remote Postgres database.
 
 ```bash
 npm install
-cp .env.example .env   # set DATABASE_URL to your Postgres instance, and AUTH_SECRET (openssl rand -hex 32)
+cp .env.example .env   # set DATABASE_URL/DIRECT_URL to your Postgres instance, and AUTH_SECRET (openssl rand -hex 32)
 npx prisma migrate deploy
 npm run dev
 ```
@@ -22,16 +22,19 @@ Open [http://localhost:3000](http://localhost:3000). The first visit prompts you
 
 ## Deploying
 
-This app is built to deploy straight to **Vercel** with a hosted Postgres database (e.g. **Neon** or **Supabase**, both have a free tier).
+This app deploys to **Vercel**, backed by a **Supabase** Postgres database.
 
-1. **Create a Postgres database** — on [neon.tech](https://neon.tech) or [supabase.com](https://supabase.com), create a project and copy its connection string (a `postgresql://...` URL).
+1. **Get two connection strings from Supabase** — in your Supabase project: Project Settings → Database → Connection string.
+   - **DATABASE_URL**: the **Transaction pooler** string (port `6543`). Vercel's serverless functions open a lot of short-lived connections, and Postgres has a hard connection limit — the pooler (PgBouncer) is what keeps that from exhausting it. Append `?pgbouncer=true` to the end if it isn't already there (this tells Prisma not to use prepared statements, which the pooler's transaction mode doesn't support).
+   - **DIRECT_URL**: the **direct** connection string (port `5432`). Migrations (`prisma migrate deploy`) need a real, non-pooled connection to run DDL statements.
 2. **Push this repo to GitHub** (already done if you're reading this from the repo) and import it in [Vercel](https://vercel.com/new).
 3. **Set environment variables** in the Vercel project settings:
-   - `DATABASE_URL` — the connection string from step 1
+   - `DATABASE_URL` — the pooled string from step 1
+   - `DIRECT_URL` — the direct string from step 1
    - `AUTH_SECRET` — a random secret (`openssl rand -hex 32`)
    - `APP_URL` — your deployed URL (e.g. `https://your-app.vercel.app`), used to build links in emails
    - `GMAIL_USER` / `GMAIL_APP_PASSWORD` — optional, see [Password recovery](#password-recovery) below
-4. **Deploy.** The build command (`prisma migrate deploy && next build`) automatically applies the database schema on every deploy — no manual migration step needed.
+4. **Deploy.** The build command (`prisma migrate deploy && next build`) automatically applies the database schema on every deploy using `DIRECT_URL` — no manual migration step needed.
 5. Visit the deployed URL and create your account on the first-run signup page.
 
 ## Password recovery
