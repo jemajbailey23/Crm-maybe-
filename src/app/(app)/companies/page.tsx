@@ -1,8 +1,24 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { SearchBox } from "@/components/search-box";
 
-export default async function CompaniesPage() {
+export default async function CompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+
   const companies = await prisma.company.findMany({
+    where: q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { website: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { contacts: true, deals: true } } },
   });
@@ -24,14 +40,24 @@ export default async function CompaniesPage() {
         </Link>
       </div>
 
+      <Suspense>
+        <SearchBox key={q ?? ""} placeholder="Search companies…" />
+      </Suspense>
+
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         {companies.length === 0 ? (
           <p className="p-6 text-sm text-slate-500">
-            No companies yet.{" "}
-            <Link href="/companies/new" className="font-medium text-slate-900 underline">
-              Add your first one
-            </Link>
-            .
+            {q ? (
+              "No companies match your search."
+            ) : (
+              <>
+                No companies yet.{" "}
+                <Link href="/companies/new" className="font-medium text-slate-900 underline">
+                  Add your first one
+                </Link>
+                .
+              </>
+            )}
           </p>
         ) : (
           <table className="min-w-full divide-y divide-slate-200">

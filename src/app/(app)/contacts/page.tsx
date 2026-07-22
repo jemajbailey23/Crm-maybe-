@@ -1,8 +1,27 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { SearchBox } from "@/components/search-box";
 
-export default async function ContactsPage() {
+export default async function ContactsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+
   const contacts = await prisma.contact.findMany({
+    where: q
+      ? {
+          OR: [
+            { firstName: { contains: q, mode: "insensitive" } },
+            { lastName: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+            { phone: { contains: q, mode: "insensitive" } },
+            { company: { name: { contains: q, mode: "insensitive" } } },
+          ],
+        }
+      : undefined,
     orderBy: { createdAt: "desc" },
     include: { company: true },
   });
@@ -24,14 +43,24 @@ export default async function ContactsPage() {
         </Link>
       </div>
 
+      <Suspense>
+        <SearchBox key={q ?? ""} placeholder="Search contacts…" />
+      </Suspense>
+
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         {contacts.length === 0 ? (
           <p className="p-6 text-sm text-slate-500">
-            No contacts yet.{" "}
-            <Link href="/contacts/new" className="font-medium text-slate-900 underline">
-              Add your first one
-            </Link>
-            .
+            {q ? (
+              "No contacts match your search."
+            ) : (
+              <>
+                No contacts yet.{" "}
+                <Link href="/contacts/new" className="font-medium text-slate-900 underline">
+                  Add your first one
+                </Link>
+                .
+              </>
+            )}
           </p>
         ) : (
           <table className="min-w-full divide-y divide-slate-200">

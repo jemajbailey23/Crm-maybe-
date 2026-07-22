@@ -32,6 +32,14 @@ This app is built to deploy straight to **Vercel** with a hosted Postgres databa
 4. **Deploy.** The build command (`prisma migrate deploy && next build`) automatically applies the database schema on every deploy — no manual migration step needed.
 5. Visit the deployed URL and create your account on the first-run signup page.
 
+## Password recovery
+
+There's no self-service "forgot password" flow yet — this is a single-owner tool without email sending set up. If you're locked out, reset your password directly from the machine that has your production `DATABASE_URL`:
+
+```bash
+DATABASE_URL="<your production connection string>" npm run reset-password -- you@example.com newpassword123
+```
+
 ## Stack
 
 - **Next.js 16** (App Router, Server Actions)

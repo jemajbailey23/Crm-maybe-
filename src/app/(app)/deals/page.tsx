@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { DealStageSelect } from "./deal-stage-select";
+import { SearchBox } from "@/components/search-box";
 
 function formatCurrency(value: number | null) {
   if (value === null) return null;
@@ -19,8 +21,24 @@ const STAGES: { value: "NEW" | "CONTACTED" | "PROPOSAL" | "WON" | "LOST"; label:
   { value: "LOST", label: "Lost" },
 ];
 
-export default async function DealsPage() {
+export default async function DealsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+
   const deals = await prisma.deal.findMany({
+    where: q
+      ? {
+          OR: [
+            { title: { contains: q, mode: "insensitive" } },
+            { contact: { firstName: { contains: q, mode: "insensitive" } } },
+            { contact: { lastName: { contains: q, mode: "insensitive" } } },
+            { company: { name: { contains: q, mode: "insensitive" } } },
+          ],
+        }
+      : undefined,
     orderBy: { createdAt: "desc" },
     include: { contact: true, company: true },
   });
@@ -48,6 +66,10 @@ export default async function DealsPage() {
           New deal
         </Link>
       </div>
+
+      <Suspense>
+        <SearchBox key={q ?? ""} placeholder="Search deals…" />
+      </Suspense>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         {STAGES.map((stage) => {
