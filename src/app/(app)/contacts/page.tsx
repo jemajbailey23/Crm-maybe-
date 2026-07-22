@@ -35,12 +35,20 @@ export default async function ContactsPage({
             Everyone you&apos;re doing business with.
           </p>
         </div>
-        <Link
-          href="/contacts/new"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
-        >
-          New contact
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/contacts/import"
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            Import CSV
+          </Link>
+          <Link
+            href="/contacts/new"
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+          >
+            New contact
+          </Link>
+        </div>
       </div>
 
       <Suspense>
