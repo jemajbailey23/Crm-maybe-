@@ -51,3 +51,23 @@ export async function changeEmail(
   revalidatePath("/account");
   return { success: true };
 }
+
+export type ChangeNameState = { error?: string; success?: boolean };
+
+export async function changeName(
+  _prevState: ChangeNameState,
+  formData: FormData
+): Promise<ChangeNameState> {
+  const user = await requireUser();
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    return { error: "Name can't be empty." };
+  }
+
+  await prisma.user.update({ where: { id: user.id }, data: { name } });
+
+  revalidatePath("/account");
+  revalidatePath("/", "layout");
+  return { success: true };
+}
