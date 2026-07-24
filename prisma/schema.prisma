@@ -21,6 +21,12 @@ model User {
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
 
+  // Weekly booking availability: JSON array of
+  // { dayOfWeek: 0-6 (Sun-Sat), start: "HH:MM", end: "HH:MM" }
+  weeklyAvailability Json?
+  bookingSlotMinutes Int    @default(30)
+  bookingTimezone    String @default("America/New_York")
+
   tasks      Task[]
   activities Activity[]
   passwordResetTokens PasswordResetToken[]
@@ -67,6 +73,20 @@ model Contact {
   deals      Deal[]
   tasks      Task[]
   activities Activity[]
+  bookings   Booking[]
+}
+
+model Booking {
+  id        String   @id @default(cuid())
+  startsAt  DateTime
+  endsAt    DateTime
+  name      String
+  email     String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactId String?
 }
 
 enum DealStage {

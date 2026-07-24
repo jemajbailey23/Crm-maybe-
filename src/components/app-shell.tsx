@@ -12,6 +12,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
       <NavLink href="/companies">Companies</NavLink>
       <NavLink href="/deals">Pipeline</NavLink>
       <NavLink href="/tasks">Tasks</NavLink>
+      <NavLink href="/booking">Booking</NavLink>
     </nav>
   );
 }

@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SignupForm } from "./signup-form";
 
+// Whether signup is allowed depends on live user count — never prerender.
+export const dynamic = "force-dynamic";
+
 export default async function SignupPage() {
   const userCount = await prisma.user.count();
   if (userCount > 0) redirect("/login");
