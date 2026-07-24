@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { NavLink } from "@/components/nav-link";
 import { logout } from "@/app/(app)/session-actions";
 
@@ -20,7 +21,12 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 function UserFooter({ userName }: { userName: string }) {
   return (
     <div className="border-t border-slate-200 pt-3">
-      <p className="truncate px-3 text-xs text-slate-500">{userName}</p>
+      <Link
+        href="/account"
+        className="block truncate rounded-md px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+      >
+        {userName}
+      </Link>
       <form action={logout}>
         <button
           type="submit"
