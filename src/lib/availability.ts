@@ -1,7 +1,10 @@
-import { addDays, addMinutes } from "date-fns";
+import { addDays, addHours, addMinutes } from "date-fns";
 import { fromZonedTime, format as formatInZone } from "date-fns-tz";
 
 export type AvailabilityRule = { dayOfWeek: number; start: string; end: string };
+
+// Bookings must be made at least this far in advance.
+export const MIN_BOOKING_NOTICE_HOURS = 12;
 
 export const WEEKDAY_LABELS = [
   "Sunday",
@@ -40,6 +43,7 @@ export function generateAvailableSlots({
   now?: Date;
 }): Date[] {
   const slots: Date[] = [];
+  const earliestStart = addHours(now, MIN_BOOKING_NOTICE_HOURS);
 
   for (let dayOffset = 0; dayOffset < daysAhead; dayOffset++) {
     const candidate = addDays(now, dayOffset);
@@ -56,7 +60,7 @@ export function generateAvailableSlots({
       let slotStart = rangeStart;
       while (addMinutes(slotStart, slotMinutes).getTime() <= rangeEnd.getTime()) {
         const slotFinish = addMinutes(slotStart, slotMinutes);
-        if (slotStart.getTime() > now.getTime()) {
+        if (slotStart.getTime() >= earliestStart.getTime()) {
           const overlaps = existingBookings.some(
             (b) => slotStart < b.endsAt && slotFinish > b.startsAt
           );
