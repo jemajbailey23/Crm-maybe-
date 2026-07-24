@@ -35,7 +35,7 @@ export default async function BookPage() {
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold text-slate-900">
-            Book a call with {owner.name}
+            Book Your Free Growth Audit
           </h1>
           <p className="mt-1 text-sm text-slate-500">Bailey Ventures Digital</p>
         </div>
