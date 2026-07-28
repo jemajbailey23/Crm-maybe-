@@ -17,6 +17,7 @@ export async function createBooking(
     .trim()
     .toLowerCase();
   const notes = String(formData.get("notes") ?? "").trim();
+  const visitorTimezone = String(formData.get("visitorTimezone") ?? "").trim();
 
   if (!startsAtRaw || !name || !email) {
     return { error: "Please fill in your name, email, and pick a time." };
@@ -80,15 +81,25 @@ export async function createBooking(
   await prisma.activity.create({
     data: {
       type: "MEETING",
-      summary: `Booked a call for ${startsAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
+      summary: `Booked a call for ${startsAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: owner.bookingTimezone })}`,
       contactId: contact.id,
       createdById: owner.id,
     },
   });
 
   await Promise.all([
-    sendBookingOwnerNotification(owner.email, { name, email, startsAt, notes: notes || null }),
-    sendBookingConfirmation(email, { name, startsAt }),
+    sendBookingOwnerNotification(owner.email, {
+      name,
+      email,
+      startsAt,
+      notes: notes || null,
+      timezone: owner.bookingTimezone,
+    }),
+    sendBookingConfirmation(email, {
+      name,
+      startsAt,
+      timezone: visitorTimezone || owner.bookingTimezone,
+    }),
   ]);
 
   revalidatePath("/booking");

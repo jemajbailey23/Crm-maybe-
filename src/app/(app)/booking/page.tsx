@@ -5,10 +5,15 @@ import { AvailabilityForm } from "./availability-form";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import type { AvailabilityRule } from "@/lib/availability";
 
-function formatDateTime(date: Date) {
+function formatDateTime(date: Date, timezone: string) {
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+    timeZoneName: "short",
   }).format(date);
 }
 
@@ -67,7 +72,7 @@ export default async function BookingSettingsPage() {
             {upcomingBookings.map((booking) => (
               <li key={booking.id} className="py-2 text-sm">
                 <p className="font-medium text-slate-900">
-                  {formatDateTime(booking.startsAt)}
+                  {formatDateTime(booking.startsAt, user.bookingTimezone)}
                 </p>
                 <p className="text-slate-500">
                   {booking.contact ? (

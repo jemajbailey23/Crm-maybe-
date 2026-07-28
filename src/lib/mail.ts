@@ -43,11 +43,23 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
 
 export async function sendBookingOwnerNotification(
   ownerEmail: string,
-  booking: { name: string; email: string; startsAt: Date; notes: string | null }
+  booking: {
+    name: string;
+    email: string;
+    startsAt: Date;
+    notes: string | null;
+    timezone: string;
+  }
 ) {
   const when = booking.startsAt.toLocaleString("en-US", {
-    dateStyle: "full",
-    timeStyle: "short",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: booking.timezone,
+    timeZoneName: "short",
   });
   await send({
     to: ownerEmail,
@@ -59,11 +71,17 @@ export async function sendBookingOwnerNotification(
 
 export async function sendBookingConfirmation(
   to: string,
-  booking: { name: string; startsAt: Date }
+  booking: { name: string; startsAt: Date; timezone: string }
 ) {
   const when = booking.startsAt.toLocaleString("en-US", {
-    dateStyle: "full",
-    timeStyle: "short",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: booking.timezone,
+    timeZoneName: "short",
   });
   await send({
     to,

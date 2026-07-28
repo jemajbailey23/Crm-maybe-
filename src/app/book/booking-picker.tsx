@@ -1,12 +1,28 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState, useSyncExternalStore } from "react";
 import { createBooking, type BookingState } from "./actions";
 
 const initialState: BookingState = {};
 
 function localDayKey(date: Date) {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function subscribeNoop() {
+  return () => {};
+}
+
+// Slot times are formatted in the visitor's local timezone, which the
+// server can't know — this returns false during SSR/first paint and true
+// once hydrated on the client, without the hydration mismatch a plain
+// useEffect+setState("mounted") would cause.
+function useIsClient() {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false
+  );
 }
 
 export function BookingPicker({
@@ -35,6 +51,8 @@ export function BookingPicker({
     initialState
   );
 
+  const mounted = useIsClient();
+
   if (slots.length === 0) {
     return (
       <p className="text-center text-sm text-slate-500">
@@ -52,6 +70,23 @@ export function BookingPicker({
         <p className="mt-1 text-sm text-slate-500">
           Check your email for confirmation.
         </p>
+      </div>
+    );
+  }
+
+  if (!mounted) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="flex gap-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-9 w-20 shrink-0 animate-pulse rounded-md bg-slate-100" />
+          ))}
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-9 animate-pulse rounded-md bg-slate-100" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -111,6 +146,11 @@ export function BookingPicker({
           className="space-y-4 rounded-lg border border-slate-200 bg-white p-6"
         >
           <input type="hidden" name="startsAt" value={selectedSlot.toISOString()} />
+          <input
+            type="hidden"
+            name="visitorTimezone"
+            value={Intl.DateTimeFormat().resolvedOptions().timeZone}
+          />
           <p className="text-sm text-slate-600">
             {new Intl.DateTimeFormat("en-US", {
               dateStyle: "full",
