@@ -36,6 +36,8 @@ export function ActivityQuickForm({
           <option value="SMS">SMS</option>
           <option value="FACEBOOK_MESSAGE">Facebook message</option>
           <option value="MEETING">Meeting</option>
+          <option value="DEMO">Demo</option>
+          <option value="PROPOSAL">Proposal</option>
         </select>
         <input
           name="summary"

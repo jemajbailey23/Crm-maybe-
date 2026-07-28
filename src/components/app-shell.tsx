@@ -13,6 +13,7 @@ import {
   ProjectsIcon,
   TasksIcon,
   FinancialsIcon,
+  PerformanceIcon,
   KnowledgeIcon,
   AssistantIcon,
   BookingIcon,
@@ -57,6 +58,9 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
       </NavLink>
       <NavLink href="/financials" icon={<FinancialsIcon />}>
         Financials
+      </NavLink>
+      <NavLink href="/performance" icon={<PerformanceIcon />}>
+        Performance
       </NavLink>
       <NavLink href="/knowledge" icon={<KnowledgeIcon />}>
         Knowledge

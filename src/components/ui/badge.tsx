@@ -66,6 +66,8 @@ const ACTIVITY_TYPE_VARIANT: Record<string, BadgeVariant> = {
   MEETING: "amber",
   SMS: "emerald",
   FACEBOOK_MESSAGE: "blue",
+  DEMO: "violet",
+  PROPOSAL: "amber",
 };
 
 const ACTIVITY_TYPE_LABEL: Record<string, string> = {
@@ -75,6 +77,8 @@ const ACTIVITY_TYPE_LABEL: Record<string, string> = {
   MEETING: "Meeting",
   SMS: "SMS",
   FACEBOOK_MESSAGE: "Facebook message",
+  DEMO: "Demo",
+  PROPOSAL: "Proposal",
 };
 
 export function ActivityTypeBadge({ type }: { type: string }) {

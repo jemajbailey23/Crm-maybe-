@@ -34,6 +34,7 @@ model User {
   tasks               Task[]
   activities          Activity[]
   passwordResetTokens PasswordResetToken[]
+  goals               Goal[]
 }
 
 model PasswordResetToken {
@@ -352,6 +353,8 @@ enum ActivityType {
   MEETING
   SMS
   FACEBOOK_MESSAGE
+  DEMO
+  PROPOSAL
 }
 
 model Activity {
@@ -394,4 +397,32 @@ model KnowledgeArticle {
   content   String
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
+}
+
+enum GoalMetric {
+  CALLS
+  MEETINGS
+  DEMOS
+  PROPOSALS
+  CLIENTS_CLOSED
+  REVENUE
+}
+
+enum GoalPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+model Goal {
+  id        String     @id @default(cuid())
+  metric    GoalMetric
+  period    GoalPeriod
+  target    Float      @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([userId, metric, period])
 }
