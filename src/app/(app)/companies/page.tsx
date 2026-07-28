@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { SearchBox } from "@/components/search-box";
+import { deleteCompany } from "./actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 export default async function CompaniesPage({
   searchParams,
@@ -77,11 +79,12 @@ export default async function CompaniesPage({
                 <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Deals
                 </th>
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
               {companies.map((company) => (
-                <tr key={company.id} className="transition-colors hover:bg-zinc-800/30">
+                <tr key={company.id} className="group transition-colors hover:bg-zinc-800/30">
                   <td className="px-4 py-3 text-sm">
                     <Link
                       href={`/companies/${company.id}`}
@@ -98,6 +101,16 @@ export default async function CompaniesPage({
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-400">
                     {company._count.deals}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm">
+                    <form action={deleteCompany.bind(null, company.id)}>
+                      <ConfirmSubmitButton
+                        confirmMessage={`Delete ${company.name}? This can't be undone.`}
+                        className="text-xs text-zinc-600 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                      >
+                        Delete
+                      </ConfirmSubmitButton>
+                    </form>
                   </td>
                 </tr>
               ))}

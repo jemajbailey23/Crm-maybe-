@@ -52,3 +52,8 @@ export async function updateAvailability(
   revalidatePath("/book");
   return { success: true };
 }
+
+export async function deleteBooking(bookingId: string) {
+  await prisma.booking.delete({ where: { id: bookingId } });
+  revalidatePath("/booking");
+}

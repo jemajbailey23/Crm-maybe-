@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { AvailabilityForm } from "./availability-form";
 import { CopyLinkButton } from "@/components/copy-link-button";
+import { deleteBooking } from "./actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import type { AvailabilityRule } from "@/lib/availability";
 
 function formatDateTime(date: Date, timezone: string) {
@@ -70,23 +72,33 @@ export default async function BookingSettingsPage() {
         ) : (
           <ul className="divide-y divide-zinc-800/60">
             {upcomingBookings.map((booking) => (
-              <li key={booking.id} className="py-2.5 text-sm">
-                <p className="font-medium text-zinc-100">
-                  {formatDateTime(booking.startsAt, user.bookingTimezone)}
-                </p>
-                <p className="text-zinc-500">
-                  {booking.contact ? (
-                    <Link
-                      href={`/contacts/${booking.contact.id}`}
-                      className="hover:text-indigo-400"
-                    >
-                      {booking.name}
-                    </Link>
-                  ) : (
-                    booking.name
-                  )}{" "}
-                  · {booking.email}
-                </p>
+              <li key={booking.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium text-zinc-100">
+                    {formatDateTime(booking.startsAt, user.bookingTimezone)}
+                  </p>
+                  <p className="truncate text-zinc-500">
+                    {booking.contact ? (
+                      <Link
+                        href={`/contacts/${booking.contact.id}`}
+                        className="hover:text-indigo-400"
+                      >
+                        {booking.name}
+                      </Link>
+                    ) : (
+                      booking.name
+                    )}{" "}
+                    · {booking.email}
+                  </p>
+                </div>
+                <form action={deleteBooking.bind(null, booking.id)}>
+                  <ConfirmSubmitButton
+                    confirmMessage={`Cancel the call with ${booking.name}?`}
+                    className="shrink-0 text-xs text-zinc-600 transition-colors hover:text-red-400"
+                  >
+                    Cancel
+                  </ConfirmSubmitButton>
+                </form>
               </li>
             ))}
           </ul>

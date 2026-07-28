@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { SearchBox } from "@/components/search-box";
+import { deleteContact } from "./actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 export default async function ContactsPage({
   searchParams,
@@ -88,11 +90,12 @@ export default async function ContactsPage({
                 <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Phone
                 </th>
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
               {contacts.map((contact) => (
-                <tr key={contact.id} className="transition-colors hover:bg-zinc-800/30">
+                <tr key={contact.id} className="group transition-colors hover:bg-zinc-800/30">
                   <td className="px-4 py-3 text-sm">
                     <Link
                       href={`/contacts/${contact.id}`}
@@ -109,6 +112,16 @@ export default async function ContactsPage({
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-400">
                     {contact.phone ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm">
+                    <form action={deleteContact.bind(null, contact.id)}>
+                      <ConfirmSubmitButton
+                        confirmMessage={`Delete ${contact.firstName} ${contact.lastName}? This can't be undone.`}
+                        className="text-xs text-zinc-600 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                      >
+                        Delete
+                      </ConfirmSubmitButton>
+                    </form>
                   </td>
                 </tr>
               ))}
