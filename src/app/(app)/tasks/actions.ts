@@ -108,6 +108,7 @@ export async function updateTask(
         ? (recurrenceRaw as TaskRecurrence)
         : TaskRecurrence.NONE,
       progress: Number.isNaN(progress) ? 0 : Math.min(100, Math.max(0, progress)),
+      overdueNotified: false,
     },
   });
 
@@ -135,6 +136,7 @@ export async function toggleTaskStatus(
     data: {
       status: nextStatus,
       progress: nextStatus === "DONE" ? 100 : undefined,
+      overdueNotified: nextStatus === "OPEN" ? false : undefined,
     },
   });
 

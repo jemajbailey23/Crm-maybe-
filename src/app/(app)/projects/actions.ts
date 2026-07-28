@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ProjectStatus, Priority } from "@prisma/client";
+import { fireAutomationTrigger } from "@/lib/automations";
 
 export type ProjectFormState = { error?: string };
 
@@ -49,6 +50,27 @@ export async function createProject(
   redirect(`/projects/${project.id}`);
 }
 
+async function fireProjectCompletionAutomations(project: {
+  name: string;
+  contactId: string;
+  contact: { firstName: string; lastName: string; businessName: string | null };
+}) {
+  const clientName =
+    project.contact.businessName || `${project.contact.firstName} ${project.contact.lastName}`;
+
+  await fireAutomationTrigger("REVIEW_REQUEST", {
+    contactId: project.contactId,
+    summary: `${project.name} for ${clientName}`,
+  });
+
+  if (project.name.toLowerCase().includes("website")) {
+    await fireAutomationTrigger("WEBSITE_PUBLISHED", {
+      contactId: project.contactId,
+      summary: `${project.name} for ${clientName}`,
+    });
+  }
+}
+
 export async function updateProject(
   projectId: string,
   _prevState: ProjectFormState,
@@ -58,14 +80,25 @@ export async function updateProject(
   if (!fields.name) return { error: "Project name is required." };
   if (!fields.contactId) return { error: "Select a client for this project." };
 
+  const existing = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { status: true },
+  });
+
   const project = await prisma.project.update({
     where: { id: projectId },
     data: fields,
+    include: { contact: true },
   });
   revalidatePath("/projects");
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/dashboard");
   revalidatePath(`/contacts/${project.contactId}`);
+
+  if (project.status === "COMPLETED" && existing?.status !== "COMPLETED") {
+    await fireProjectCompletionAutomations(project);
+  }
+
   return {};
 }
 
@@ -76,14 +109,24 @@ export async function updateProjectStatus(projectId: string, status: string) {
   };
   if (status === "COMPLETED") data.progress = 100;
 
+  const existing = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { status: true },
+  });
+
   const project = await prisma.project.update({
     where: { id: projectId },
     data,
+    include: { contact: true },
   });
   revalidatePath("/projects");
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/dashboard");
   revalidatePath(`/contacts/${project.contactId}`);
+
+  if (status === "COMPLETED" && existing?.status !== "COMPLETED") {
+    await fireProjectCompletionAutomations(project);
+  }
 }
 
 export async function updateProjectProgress(projectId: string, progress: number) {

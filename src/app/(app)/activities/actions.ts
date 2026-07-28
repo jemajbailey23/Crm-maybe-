@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { ActivityType } from "@prisma/client";
+import { fireAutomationTrigger } from "@/lib/automations";
 
 export type ActivityFormState = { error?: string };
 
@@ -18,6 +19,7 @@ export async function createActivity(
   const contactId = String(formData.get("contactId") ?? "").trim();
   const dealId = String(formData.get("dealId") ?? "").trim();
   const projectId = String(formData.get("projectId") ?? "").trim();
+  const missed = formData.get("missed") === "on";
 
   if (!summary) {
     return { error: "Activity summary is required." };
@@ -33,6 +35,7 @@ export async function createActivity(
     data: {
       summary,
       type,
+      missed: type === "CALL" ? missed : false,
       contactId: contactId || null,
       dealId: dealId || null,
       projectId: projectId || null,
@@ -44,6 +47,14 @@ export async function createActivity(
   if (dealId) revalidatePath(`/deals/${dealId}`);
   if (projectId) revalidatePath(`/projects/${projectId}`);
   revalidatePath("/dashboard");
+
+  if (type === "PROPOSAL") {
+    await fireAutomationTrigger("PROPOSAL_SENT", { contactId: contactId || undefined, summary });
+  }
+  if (type === "CALL" && missed) {
+    await fireAutomationTrigger("MISSED_CALL", { contactId: contactId || undefined, summary });
+  }
+
   return {};
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createActivity, type ActivityFormState } from "./actions";
 
 const initialState: ActivityFormState = {};
@@ -18,6 +18,7 @@ export function ActivityQuickForm({
     createActivity,
     initialState
   );
+  const [type, setType] = useState("NOTE");
 
   return (
     <form action={formAction} className="space-y-2">
@@ -27,7 +28,8 @@ export function ActivityQuickForm({
       <div className="flex gap-2">
         <select
           name="type"
-          defaultValue="NOTE"
+          value={type}
+          onChange={(e) => setType(e.target.value)}
           className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           <option value="NOTE">Note</option>
@@ -53,6 +55,12 @@ export function ActivityQuickForm({
           {pending ? "Logging…" : "Log"}
         </button>
       </div>
+      {type === "CALL" && (
+        <label className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <input type="checkbox" name="missed" className="rounded border-zinc-700 bg-zinc-900" />
+          Missed call
+        </label>
+      )}
       {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
     </form>
   );

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { InvoiceStatus } from "@prisma/client";
+import { fireAutomationTrigger } from "@/lib/automations";
 
 export type InvoiceFormState = { error?: string };
 
@@ -51,8 +52,16 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
       status: status as InvoiceStatus,
       paidAt: status === "PAID" ? new Date() : null,
     },
+    include: { contact: true },
   });
   revalidatePath(`/contacts/${invoice.contactId}`);
+
+  if (status === "PAID") {
+    await fireAutomationTrigger("INVOICE_PAID", {
+      contactId: invoice.contactId,
+      summary: `${invoice.contact.businessName || `${invoice.contact.firstName} ${invoice.contact.lastName}`} — ${invoice.description} ($${invoice.amount})`,
+    });
+  }
 }
 
 export async function deleteInvoice(invoiceId: string) {

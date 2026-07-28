@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ContactStatus, DealStage, Priority, ContractStatus } from "@prisma/client";
+import { fireAutomationTrigger } from "@/lib/automations";
 
 export type ContactFormState = { error?: string };
 
@@ -102,6 +103,14 @@ export async function createContact(
   const contact = await prisma.contact.create({ data: fields });
   revalidatePath("/contacts");
   revalidatePath("/dashboard");
+
+  if (contact.status === "LEAD") {
+    await fireAutomationTrigger("LEAD_CREATED", {
+      contactId: contact.id,
+      summary: contact.businessName || `${contact.firstName} ${contact.lastName}`,
+    });
+  }
+
   redirect(`/contacts/${contact.id}`);
 }
 
@@ -125,11 +134,18 @@ export async function updateContact(
 export async function updateContractStatus(contactId: string, status: string) {
   if (!CONTRACT_STATUSES.includes(status as ContractStatus)) return;
 
-  await prisma.contact.update({
+  const contact = await prisma.contact.update({
     where: { id: contactId },
     data: { contractStatus: status as ContractStatus },
   });
   revalidatePath(`/contacts/${contactId}`);
+
+  if (status === "SIGNED") {
+    await fireAutomationTrigger("CLIENT_SIGNED", {
+      contactId: contact.id,
+      summary: contact.businessName || `${contact.firstName} ${contact.lastName}`,
+    });
+  }
 }
 
 export async function deleteContact(contactId: string) {

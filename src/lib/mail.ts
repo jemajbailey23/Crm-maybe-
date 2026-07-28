@@ -69,6 +69,18 @@ export async function sendBookingOwnerNotification(
   });
 }
 
+export async function sendAutomationEmail(to: string, subject: string, body: string) {
+  await send({
+    to,
+    subject,
+    text: body,
+    html: body
+      .split("\n\n")
+      .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`)
+      .join(""),
+  });
+}
+
 export async function sendBookingConfirmation(
   to: string,
   booking: { name: string; startsAt: Date; timezone: string }

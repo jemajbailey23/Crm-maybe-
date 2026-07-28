@@ -328,6 +328,7 @@ model Task {
   recurrence TaskRecurrence @default(NONE)
   labels     String? // comma-separated for simplicity, same pattern as Contact.tags
   progress   Int            @default(0) // 0-100
+  overdueNotified Boolean   @default(false) // guards the Task Overdue automation from re-firing
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
@@ -361,6 +362,7 @@ model Activity {
   id         String       @id @default(cuid())
   type       ActivityType
   summary    String
+  missed     Boolean      @default(false) // only meaningful when type is CALL
   occurredAt DateTime     @default(now())
   createdAt  DateTime     @default(now())
 
@@ -425,4 +427,61 @@ model Goal {
   userId String
 
   @@unique([userId, metric, period])
+}
+
+enum AutomationTrigger {
+  LEAD_CREATED
+  PROPOSAL_SENT
+  INVOICE_PAID
+  WEBSITE_PUBLISHED
+  CLIENT_SIGNED
+  TASK_OVERDUE
+  REVIEW_REQUEST
+  MISSED_CALL
+  APPOINTMENT_BOOKED
+}
+
+enum AutomationActionType {
+  CREATE_TASK
+  SEND_EMAIL
+  WEBHOOK
+}
+
+enum AutomationRunStatus {
+  SUCCESS
+  FAILED
+}
+
+model AutomationRule {
+  id         String               @id @default(cuid())
+  name       String
+  trigger    AutomationTrigger
+  actionType AutomationActionType
+  enabled    Boolean              @default(true)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  // CREATE_TASK config
+  taskTitle     String?
+  taskDueInDays Int?
+
+  // SEND_EMAIL config
+  emailSubject String?
+  emailBody    String?
+
+  // WEBHOOK config
+  webhookUrl String?
+
+  runs AutomationRun[]
+}
+
+model AutomationRun {
+  id        String              @id @default(cuid())
+  status    AutomationRunStatus @default(SUCCESS)
+  summary   String
+  error     String?
+  createdAt DateTime            @default(now())
+
+  rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  ruleId String
 }

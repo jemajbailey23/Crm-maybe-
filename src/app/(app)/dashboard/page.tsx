@@ -7,6 +7,7 @@ import { BarChart } from "@/components/ui/bar-chart";
 import { ActivityTypeBadge, PriorityBadge } from "@/components/ui/badge";
 import { getNextBestActions } from "./next-best-actions";
 import { NextBestActionsPanel } from "./next-best-actions-panel";
+import { checkOverdueTasks } from "@/lib/automations";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ const QUICK_ACTIONS = [
 
 export default async function DashboardPage() {
   const user = await requireUser();
+  await checkOverdueTasks();
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());

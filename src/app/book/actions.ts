@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateAvailableSlots, type AvailabilityRule } from "@/lib/availability";
 import { sendBookingOwnerNotification, sendBookingConfirmation } from "@/lib/mail";
+import { fireAutomationTrigger } from "@/lib/automations";
 
 export type BookingState = { error?: string; success?: boolean };
 
@@ -104,5 +105,11 @@ export async function createBooking(
 
   revalidatePath("/booking");
   revalidatePath("/book");
+
+  await fireAutomationTrigger("APPOINTMENT_BOOKED", {
+    contactId: contact.id,
+    summary: `${name} booked a call for ${startsAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
+  });
+
   return { success: true };
 }
