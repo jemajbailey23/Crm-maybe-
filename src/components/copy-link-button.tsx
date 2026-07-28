@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-export function CopyLinkButton({ text }: { text: string }) {
+export function CopyLinkButton({
+  text,
+  label = "Copy link",
+}: {
+  text: string;
+  label?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   return (
@@ -15,7 +21,7 @@ export function CopyLinkButton({ text }: { text: string }) {
       }}
       className="shrink-0 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
     >
-      {copied ? "Copied!" : "Copy link"}
+      {copied ? "Copied!" : label}
     </button>
   );
 }

@@ -1,0 +1,14 @@
+-- CreateEnum
+CREATE TYPE "KnowledgeCategory" AS ENUM ('SALES_SCRIPTS', 'DISCOVERY_QUESTIONS', 'SEO_SOPS', 'AI_AUTOMATION_SOPS', 'WEBSITE_SOPS', 'PROPOSAL_TEMPLATES', 'EMAIL_TEMPLATES', 'PROMPT_LIBRARY', 'OBJECTION_HANDLING', 'BUSINESS_RESOURCES');
+
+-- CreateTable
+CREATE TABLE "KnowledgeArticle" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "category" "KnowledgeCategory" NOT NULL,
+    "content" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "KnowledgeArticle_pkey" PRIMARY KEY ("id")
+);

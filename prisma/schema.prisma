@@ -373,3 +373,25 @@ model Activity {
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdById String?
 }
+
+enum KnowledgeCategory {
+  SALES_SCRIPTS
+  DISCOVERY_QUESTIONS
+  SEO_SOPS
+  AI_AUTOMATION_SOPS
+  WEBSITE_SOPS
+  PROPOSAL_TEMPLATES
+  EMAIL_TEMPLATES
+  PROMPT_LIBRARY
+  OBJECTION_HANDLING
+  BUSINESS_RESOURCES
+}
+
+model KnowledgeArticle {
+  id        String            @id @default(cuid())
+  title     String
+  category  KnowledgeCategory
+  content   String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
