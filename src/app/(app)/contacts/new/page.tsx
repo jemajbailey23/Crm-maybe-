@@ -5,9 +5,9 @@ import { createContact } from "../actions";
 export default async function NewContactPage({
   searchParams,
 }: {
-  searchParams: Promise<{ companyId?: string }>;
+  searchParams: Promise<{ companyId?: string; status?: string }>;
 }) {
-  const { companyId } = await searchParams;
+  const { companyId, status } = await searchParams;
   const companies = await prisma.company.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true },
@@ -23,7 +23,7 @@ export default async function NewContactPage({
         <ContactForm
           action={createContact}
           companies={companies}
-          defaultValues={companyId ? { companyId } : undefined}
+          defaultValues={{ companyId, status }}
           submitLabel="Create contact"
         />
       </div>

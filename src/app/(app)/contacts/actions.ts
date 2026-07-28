@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { ContactStatus } from "@prisma/client";
 
 export type ContactFormState = { error?: string };
+
+const STATUSES = Object.values(ContactStatus);
 
 function parseContactFields(formData: FormData) {
   const firstName = String(formData.get("firstName") ?? "").trim();
@@ -15,6 +18,7 @@ function parseContactFields(formData: FormData) {
   const tags = String(formData.get("tags") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const companyId = String(formData.get("companyId") ?? "").trim();
+  const statusRaw = String(formData.get("status") ?? "").trim();
 
   return {
     firstName,
@@ -25,6 +29,9 @@ function parseContactFields(formData: FormData) {
     tags: tags || null,
     notes: notes || null,
     companyId: companyId || null,
+    status: STATUSES.includes(statusRaw as ContactStatus)
+      ? (statusRaw as ContactStatus)
+      : ContactStatus.LEAD,
   };
 }
 
@@ -39,6 +46,7 @@ export async function createContact(
 
   const contact = await prisma.contact.create({ data: fields });
   revalidatePath("/contacts");
+  revalidatePath("/dashboard");
   redirect(`/contacts/${contact.id}`);
 }
 
@@ -55,11 +63,13 @@ export async function updateContact(
   await prisma.contact.update({ where: { id: contactId }, data: fields });
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${contactId}`);
+  revalidatePath("/dashboard");
   return {};
 }
 
 export async function deleteContact(contactId: string) {
   await prisma.contact.delete({ where: { id: contactId } });
   revalidatePath("/contacts");
+  revalidatePath("/dashboard");
   redirect("/contacts");
 }

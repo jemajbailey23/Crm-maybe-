@@ -55,8 +55,13 @@ model Company {
   deals    Deal[]
 }
 
+enum ContactStatus {
+  LEAD
+  CLIENT
+}
+
 model Contact {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   firstName String
   lastName  String
   email     String?
@@ -64,8 +69,9 @@ model Contact {
   title     String?
   notes     String?
   tags      String? // comma-separated for simplicity in v1
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    ContactStatus @default(LEAD)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyId String?
@@ -98,13 +104,15 @@ enum DealStage {
 }
 
 model Deal {
-  id        String    @id @default(cuid())
-  title     String
-  value     Float? // deal value in dollars
-  stage     DealStage @default(NEW)
-  notes     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  title       String
+  value       Float? // deal value in dollars
+  stage       DealStage @default(NEW)
+  isRecurring Boolean   @default(false) // recurring/retainer revenue vs one-time
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  wonAt       DateTime? // set when stage transitions to WON, for accurate monthly reporting
 
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   contactId String?

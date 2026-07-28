@@ -29,6 +29,7 @@ export function ContactForm({
     tags?: string | null;
     notes?: string | null;
     companyId?: string | null;
+    status?: string | null;
   };
   submitLabel: string;
 }) {
@@ -55,6 +56,17 @@ export function ContactForm({
             className={inputClass}
           />
         </div>
+      </div>
+      <div>
+        <label className={labelClass}>Status</label>
+        <select
+          name="status"
+          defaultValue={defaultValues?.status ?? "LEAD"}
+          className={inputClass}
+        >
+          <option value="LEAD">Lead</option>
+          <option value="CLIENT">Client</option>
+        </select>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>

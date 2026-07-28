@@ -34,6 +34,7 @@ export function DealForm({
     title?: string;
     value?: number | null;
     stage?: string;
+    isRecurring?: boolean;
     notes?: string | null;
     contactId?: string | null;
     companyId?: string | null;
@@ -81,6 +82,15 @@ export function DealForm({
           </select>
         </div>
       </div>
+      <label className="flex items-center gap-2 text-sm text-zinc-300">
+        <input
+          type="checkbox"
+          name="isRecurring"
+          defaultChecked={defaultValues?.isRecurring}
+          className="rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500"
+        />
+        Recurring revenue (retainer/subscription, not a one-time project)
+      </label>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelClass}>Contact</label>

@@ -5,9 +5,14 @@ import { createDeal } from "../actions";
 export default async function NewDealPage({
   searchParams,
 }: {
-  searchParams: Promise<{ contactId?: string; companyId?: string }>;
+  searchParams: Promise<{
+    contactId?: string;
+    companyId?: string;
+    title?: string;
+    stage?: string;
+  }>;
 }) {
-  const { contactId, companyId } = await searchParams;
+  const { contactId, companyId, title, stage } = await searchParams;
 
   const [contacts, companies] = await Promise.all([
     prisma.contact.findMany({
@@ -31,7 +36,7 @@ export default async function NewDealPage({
           action={createDeal}
           contacts={contacts}
           companies={companies}
-          defaultValues={{ contactId, companyId }}
+          defaultValues={{ contactId, companyId, title, stage }}
           submitLabel="Create deal"
         />
       </div>
