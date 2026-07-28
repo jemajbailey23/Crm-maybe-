@@ -5,10 +5,16 @@ import { ContactForm } from "../contact-form";
 import { updateContact, deleteContact } from "../actions";
 import { toggleTaskStatus, deleteTask } from "../../tasks/actions";
 import { deleteActivity } from "../../activities/actions";
+import { deleteAttachment } from "../attachments-actions";
 import { TaskQuickForm } from "../../tasks/task-quick-form";
 import { ActivityQuickForm } from "../../activities/activity-quick-form";
+import { AttachmentUploadForm } from "../attachment-upload-form";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
-import { DealStageBadge, ActivityTypeBadge } from "@/components/ui/badge";
+import {
+  DealStageBadge,
+  ActivityTypeBadge,
+  PriorityBadge,
+} from "@/components/ui/badge";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -16,6 +22,22 @@ function formatDate(date: Date) {
     day: "numeric",
     year: "numeric",
   }).format(date);
+}
+
+function formatDateTime(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default async function ContactDetailPage({
@@ -33,6 +55,7 @@ export default async function ContactDetailPage({
         deals: { orderBy: { createdAt: "desc" } },
         tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
         activities: { orderBy: { occurredAt: "desc" } },
+        attachments: { orderBy: { createdAt: "desc" } },
       },
     }),
     prisma.company.findMany({
@@ -51,9 +74,10 @@ export default async function ContactDetailPage({
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
-            {contact.firstName} {contact.lastName}
+            {contact.businessName || `${contact.firstName} ${contact.lastName}`}
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
+            {contact.businessName ? `${contact.firstName} ${contact.lastName} · ` : ""}
             {contact.title ? `${contact.title} · ` : ""}
             {contact.company ? (
               <Link
@@ -66,6 +90,25 @@ export default async function ContactDetailPage({
               "No company"
             )}
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <DealStageBadge stage={contact.pipelineStage} />
+            <PriorityBadge priority={contact.priority} />
+            {contact.leadScore !== null && (
+              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-300">
+                Score {contact.leadScore}/100
+              </span>
+            )}
+            {contact.closingProbability !== null && (
+              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-300">
+                {contact.closingProbability}% to close
+              </span>
+            )}
+            {contact.nextFollowUpAt && (
+              <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-inset ring-indigo-500/20">
+                Follow up {formatDate(contact.nextFollowUpAt)}
+              </span>
+            )}
+          </div>
         </div>
         <form action={deleteContactWithId}>
           <ConfirmSubmitButton
@@ -166,12 +209,14 @@ export default async function ContactDetailPage({
       </section>
 
       <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Activity</h2>
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">
+          Communication timeline
+        </h2>
         <div className="mb-4">
           <ActivityQuickForm contactId={contact.id} />
         </div>
         {contact.activities.length === 0 ? (
-          <p className="text-sm text-zinc-500">No activity logged yet.</p>
+          <p className="text-sm text-zinc-500">No communication logged yet.</p>
         ) : (
           <ul className="divide-y divide-zinc-800/60">
             {contact.activities.map((activity) => (
@@ -179,12 +224,50 @@ export default async function ContactDetailPage({
                 <div className="min-w-0">
                   <p className="text-zinc-200">{activity.summary}</p>
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    {formatDate(activity.occurredAt)}
+                    {formatDateTime(activity.occurredAt)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <ActivityTypeBadge type={activity.type} />
                   <form action={deleteActivity.bind(null, activity.id)}>
+                    <button
+                      type="submit"
+                      className="text-xs text-zinc-600 transition-colors hover:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Files</h2>
+        <div className="mb-4">
+          <AttachmentUploadForm contactId={contact.id} />
+        </div>
+        {contact.attachments.length === 0 ? (
+          <p className="text-sm text-zinc-500">No files uploaded yet.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-800/60">
+            {contact.attachments.map((file) => (
+              <li key={file.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <a
+                  href={file.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-0 truncate font-medium text-zinc-200 hover:text-indigo-400"
+                >
+                  {file.filename}
+                </a>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-xs text-zinc-500">
+                    {formatBytes(file.sizeBytes)}
+                  </span>
+                  <form action={deleteAttachment.bind(null, file.id)}>
                     <button
                       type="submit"
                       className="text-xs text-zinc-600 transition-colors hover:text-red-400"

@@ -64,12 +64,43 @@ const ACTIVITY_TYPE_VARIANT: Record<string, BadgeVariant> = {
   CALL: "blue",
   EMAIL: "violet",
   MEETING: "amber",
+  SMS: "emerald",
+  FACEBOOK_MESSAGE: "blue",
+};
+
+const ACTIVITY_TYPE_LABEL: Record<string, string> = {
+  NOTE: "Note",
+  CALL: "Call",
+  EMAIL: "Email",
+  MEETING: "Meeting",
+  SMS: "SMS",
+  FACEBOOK_MESSAGE: "Facebook message",
 };
 
 export function ActivityTypeBadge({ type }: { type: string }) {
   return (
     <Badge variant={ACTIVITY_TYPE_VARIANT[type] ?? "default"}>
-      {type.charAt(0) + type.slice(1).toLowerCase()}
+      {ACTIVITY_TYPE_LABEL[type] ?? type}
+    </Badge>
+  );
+}
+
+const PRIORITY_VARIANT: Record<string, BadgeVariant> = {
+  LOW: "default",
+  MEDIUM: "blue",
+  HIGH: "red",
+};
+
+const PRIORITY_LABEL: Record<string, string> = {
+  LOW: "Low",
+  MEDIUM: "Medium",
+  HIGH: "High",
+};
+
+export function PriorityBadge({ priority }: { priority: string }) {
+  return (
+    <Badge variant={PRIORITY_VARIANT[priority] ?? "default"}>
+      {PRIORITY_LABEL[priority] ?? priority}
     </Badge>
   );
 }

@@ -27,8 +27,8 @@ model User {
   bookingSlotMinutes Int    @default(30)
   bookingTimezone    String @default("America/New_York")
 
-  tasks      Task[]
-  activities Activity[]
+  tasks               Task[]
+  activities          Activity[]
   passwordResetTokens PasswordResetToken[]
 }
 
@@ -60,6 +60,12 @@ enum ContactStatus {
   CLIENT
 }
 
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model Contact {
   id        String        @id @default(cuid())
   firstName String
@@ -73,13 +79,51 @@ model Contact {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  // Business information
+  businessName          String?
+  industry              String?
+  website               String?
+  googleBusinessProfile String?
+  facebook              String?
+  instagram             String?
+  address               String?
+
+  // Sales information
+  leadSource         String?
+  pipelineStage      DealStage @default(NEW)
+  estimatedDealValue Float?
+  monthlyValue       Float?
+  leadScore          Int? // 1-100
+  closingProbability Int? // 0-100
+  priority           Priority  @default(MEDIUM)
+  nextFollowUpAt     DateTime?
+
+  // Pain points
+  currentProblems String?
+  desiredOutcome  String?
+  competitors     String?
+
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyId String?
 
-  deals      Deal[]
-  tasks      Task[]
-  activities Activity[]
-  bookings   Booking[]
+  deals       Deal[]
+  tasks       Task[]
+  activities  Activity[]
+  bookings    Booking[]
+  attachments Attachment[]
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  filename  String
+  path      String // storage object key, used to delete from the bucket
+  url       String
+  sizeBytes Int
+  mimeType  String?
+  createdAt DateTime @default(now())
+
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String
 }
 
 model Booking {
@@ -153,14 +197,16 @@ enum ActivityType {
   CALL
   EMAIL
   MEETING
+  SMS
+  FACEBOOK_MESSAGE
 }
 
 model Activity {
-  id        String       @id @default(cuid())
-  type      ActivityType
-  summary   String
-  occurredAt DateTime    @default(now())
-  createdAt DateTime     @default(now())
+  id         String       @id @default(cuid())
+  type       ActivityType
+  summary    String
+  occurredAt DateTime     @default(now())
+  createdAt  DateTime     @default(now())
 
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   contactId String?

@@ -30,6 +30,8 @@ export function ActivityQuickForm({
           <option value="NOTE">Note</option>
           <option value="CALL">Call</option>
           <option value="EMAIL">Email</option>
+          <option value="SMS">SMS</option>
+          <option value="FACEBOOK_MESSAGE">Facebook message</option>
           <option value="MEETING">Meeting</option>
         </select>
         <input

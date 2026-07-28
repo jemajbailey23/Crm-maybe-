@@ -3,35 +3,89 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ContactStatus } from "@prisma/client";
+import { ContactStatus, DealStage, Priority } from "@prisma/client";
 
 export type ContactFormState = { error?: string };
 
 const STATUSES = Object.values(ContactStatus);
+const STAGES = Object.values(DealStage);
+const PRIORITIES = Object.values(Priority);
+
+function str(formData: FormData, key: string) {
+  const value = String(formData.get(key) ?? "").trim();
+  return value || null;
+}
+
+function clampInt(formData: FormData, key: string, min: number, max: number) {
+  const raw = String(formData.get(key) ?? "").trim();
+  if (!raw) return null;
+  const num = Math.round(Number(raw));
+  if (Number.isNaN(num)) return null;
+  return Math.min(max, Math.max(min, num));
+}
+
+function money(formData: FormData, key: string) {
+  const raw = String(formData.get(key) ?? "").trim();
+  if (!raw) return null;
+  const num = Number(raw);
+  return Number.isNaN(num) ? null : num;
+}
+
+function date(formData: FormData, key: string) {
+  const raw = String(formData.get(key) ?? "").trim();
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 function parseContactFields(formData: FormData) {
   const firstName = String(formData.get("firstName") ?? "").trim();
   const lastName = String(formData.get("lastName") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
-  const title = String(formData.get("title") ?? "").trim();
-  const tags = String(formData.get("tags") ?? "").trim();
-  const notes = String(formData.get("notes") ?? "").trim();
-  const companyId = String(formData.get("companyId") ?? "").trim();
   const statusRaw = String(formData.get("status") ?? "").trim();
+  const stageRaw = String(formData.get("pipelineStage") ?? "").trim();
+  const priorityRaw = String(formData.get("priority") ?? "").trim();
 
   return {
     firstName,
     lastName,
-    email: email || null,
-    phone: phone || null,
-    title: title || null,
-    tags: tags || null,
-    notes: notes || null,
-    companyId: companyId || null,
     status: STATUSES.includes(statusRaw as ContactStatus)
       ? (statusRaw as ContactStatus)
       : ContactStatus.LEAD,
+
+    // Business information
+    businessName: str(formData, "businessName"),
+    industry: str(formData, "industry"),
+    website: str(formData, "website"),
+    googleBusinessProfile: str(formData, "googleBusinessProfile"),
+    facebook: str(formData, "facebook"),
+    instagram: str(formData, "instagram"),
+    phone: str(formData, "phone"),
+    email: str(formData, "email"),
+    address: str(formData, "address"),
+
+    // Sales information
+    leadSource: str(formData, "leadSource"),
+    pipelineStage: STAGES.includes(stageRaw as DealStage)
+      ? (stageRaw as DealStage)
+      : DealStage.NEW,
+    estimatedDealValue: money(formData, "estimatedDealValue"),
+    monthlyValue: money(formData, "monthlyValue"),
+    leadScore: clampInt(formData, "leadScore", 1, 100),
+    closingProbability: clampInt(formData, "closingProbability", 0, 100),
+    priority: PRIORITIES.includes(priorityRaw as Priority)
+      ? (priorityRaw as Priority)
+      : Priority.MEDIUM,
+    nextFollowUpAt: date(formData, "nextFollowUpAt"),
+
+    // Pain points
+    currentProblems: str(formData, "currentProblems"),
+    desiredOutcome: str(formData, "desiredOutcome"),
+    competitors: str(formData, "competitors"),
+    notes: str(formData, "notes"),
+
+    title: str(formData, "title"),
+    tags: str(formData, "tags"),
+    companyId: str(formData, "companyId"),
   };
 }
 
