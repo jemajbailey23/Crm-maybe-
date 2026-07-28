@@ -188,3 +188,31 @@ export function PaymentStatusBadge({
           : "No invoices";
   return <Badge variant={variant}>{label}</Badge>;
 }
+
+const RECURRENCE_LABEL: Record<string, string> = {
+  DAILY: "Repeats daily",
+  WEEKLY: "Repeats weekly",
+  MONTHLY: "Repeats monthly",
+};
+
+export function RecurrenceBadge({ recurrence }: { recurrence: string }) {
+  if (recurrence === "NONE") return null;
+  return <Badge variant="violet">{RECURRENCE_LABEL[recurrence] ?? recurrence}</Badge>;
+}
+
+export function LabelChips({ labels }: { labels: string | null | undefined }) {
+  const items = (labels ?? "")
+    .split(",")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (items.length === 0) return null;
+  return (
+    <>
+      {items.map((label) => (
+        <Badge key={label} variant="default">
+          {label}
+        </Badge>
+      ))}
+    </>
+  );
+}

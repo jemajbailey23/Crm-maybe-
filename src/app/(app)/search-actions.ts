@@ -72,7 +72,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       type: "task" as const,
       title: t.title,
       subtitle: t.status === "DONE" ? "Done" : "Open",
-      href: `/tasks`,
+      href: `/tasks/${t.id}`,
     })),
     ...projects.map((p) => ({
       id: p.id,

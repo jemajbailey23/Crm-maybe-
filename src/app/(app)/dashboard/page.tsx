@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { toggleTaskStatus } from "../tasks/actions";
 import { StatCard } from "@/components/ui/stat-card";
 import { BarChart } from "@/components/ui/bar-chart";
-import { TaskStatusBadge, ActivityTypeBadge } from "@/components/ui/badge";
+import { ActivityTypeBadge, PriorityBadge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ export default async function DashboardPage() {
     callsScheduledToday,
     meetingsScheduledToday,
     openTaskCount,
-    openTasks,
+    todaysTasks,
     recentActivities,
     upcomingMeetings,
     totalClients,
@@ -88,10 +89,10 @@ export default async function DashboardPage() {
     }),
     prisma.task.count({ where: { status: "OPEN" } }),
     prisma.task.findMany({
-      where: { status: "OPEN" },
+      where: { status: "OPEN", dueDate: { lte: endOfToday } },
       orderBy: { dueDate: "asc" },
-      take: 5,
-      include: { contact: true, deal: true },
+      take: 8,
+      include: { contact: true, deal: true, project: true },
     }),
     prisma.activity.findMany({
       orderBy: { occurredAt: "desc" },
@@ -312,10 +313,10 @@ export default async function DashboardPage() {
         <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-zinc-100">
-              Upcoming tasks
-              {openTaskCount > 0 && (
+              Today&apos;s tasks
+              {todaysTasks.length > 0 && (
                 <span className="ml-2 rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-400">
-                  {openTaskCount}
+                  {todaysTasks.length}
                 </span>
               )}
             </h2>
@@ -326,21 +327,38 @@ export default async function DashboardPage() {
               View all →
             </Link>
           </div>
-          {openTasks.length === 0 ? (
-            <p className="text-sm text-zinc-500">No open tasks. Nice.</p>
+          {todaysTasks.length === 0 ? (
+            <p className="text-sm text-zinc-500">Nothing due today. Nice.</p>
           ) : (
             <ul className="divide-y divide-zinc-800/60">
-              {openTasks.map((task) => (
-                <li key={task.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-zinc-200">{task.title}</p>
+              {todaysTasks.map((task) => (
+                <li key={task.id} className="flex items-center gap-2.5 py-2.5 text-sm">
+                  <form action={toggleTaskStatus.bind(null, task.id, task.status)}>
+                    <button
+                      type="submit"
+                      className="h-4 w-4 shrink-0 rounded border border-zinc-700 bg-zinc-900 transition-colors hover:border-zinc-600"
+                      aria-label="Complete task"
+                    />
+                  </form>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={`/tasks/${task.id}`}
+                        className="truncate font-medium text-zinc-200 hover:text-indigo-400"
+                      >
+                        {task.title}
+                      </Link>
+                      <PriorityBadge priority={task.priority} />
+                    </div>
                     <p className="truncate text-xs text-zinc-500">
-                      {task.dueDate ? `Due ${formatDate(task.dueDate)}` : "No due date"}
+                      {task.dueDate && task.dueDate < startOfToday
+                        ? `Overdue since ${formatDate(task.dueDate)}`
+                        : "Due today"}
                       {task.contact && ` · ${task.contact.firstName} ${task.contact.lastName}`}
                       {task.deal && ` · ${task.deal.title}`}
+                      {task.project && ` · ${task.project.name}`}
                     </p>
                   </div>
-                  <TaskStatusBadge status={task.status} />
                 </li>
               ))}
             </ul>

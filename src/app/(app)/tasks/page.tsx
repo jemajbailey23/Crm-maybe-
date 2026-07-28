@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { toggleTaskStatus, deleteTask } from "./actions";
 import { TaskQuickForm } from "./task-quick-form";
+import { PriorityBadge, RecurrenceBadge, LabelChips } from "@/components/ui/badge";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -14,7 +15,7 @@ function formatDate(date: Date) {
 export default async function TasksPage() {
   const tasks = await prisma.task.findMany({
     orderBy: [{ status: "asc" }, { dueDate: "asc" }],
-    include: { contact: true, deal: true },
+    include: { contact: true, deal: true, project: true },
   });
 
   const openTasks = tasks.filter((task) => task.status === "OPEN");
@@ -58,24 +59,35 @@ export default async function TasksPage() {
         ) : (
           <ul className="divide-y divide-zinc-800/60">
             {openTasks.map((task) => (
-              <li key={task.id} className="flex items-center justify-between py-2.5 text-sm">
-                <div className="flex items-center gap-2.5">
+              <li key={task.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <form action={toggleTaskStatus.bind(null, task.id, task.status)}>
                     <button
                       type="submit"
-                      className="h-4 w-4 rounded border border-zinc-700 bg-zinc-900 transition-colors hover:border-zinc-600"
+                      className="h-4 w-4 shrink-0 rounded border border-zinc-700 bg-zinc-900 transition-colors hover:border-zinc-600"
                       aria-label="Toggle task status"
                     />
                   </form>
-                  <div>
-                    <p className="text-zinc-200">{task.title}</p>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Link
+                        href={`/tasks/${task.id}`}
+                        className="text-zinc-200 hover:text-indigo-400"
+                      >
+                        {task.title}
+                      </Link>
+                      <PriorityBadge priority={task.priority} />
+                      <RecurrenceBadge recurrence={task.recurrence} />
+                      <LabelChips labels={task.labels} />
+                    </div>
                     <p className="text-xs text-zinc-500">
                       {task.dueDate ? formatDate(task.dueDate) : "No due date"}
                       {task.contact && (
                         <>
                           {" · "}
                           <Link href={`/contacts/${task.contact.id}`} className="hover:text-indigo-400">
-                            {task.contact.firstName} {task.contact.lastName}
+                            {task.contact.businessName ||
+                              `${task.contact.firstName} ${task.contact.lastName}`}
                           </Link>
                         </>
                       )}
@@ -87,11 +99,19 @@ export default async function TasksPage() {
                           </Link>
                         </>
                       )}
+                      {task.project && (
+                        <>
+                          {" · "}
+                          <Link href={`/projects/${task.project.id}`} className="hover:text-indigo-400">
+                            {task.project.name}
+                          </Link>
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
                 <form action={deleteTask.bind(null, task.id)}>
-                  <button type="submit" className="text-xs text-zinc-600 transition-colors hover:text-red-400">
+                  <button type="submit" className="shrink-0 text-xs text-zinc-600 transition-colors hover:text-red-400">
                     Remove
                   </button>
                 </form>
@@ -117,7 +137,12 @@ export default async function TasksPage() {
                       aria-label="Toggle task status"
                     />
                   </form>
-                  <p className="text-zinc-500 line-through">{task.title}</p>
+                  <Link
+                    href={`/tasks/${task.id}`}
+                    className="text-zinc-500 line-through hover:text-zinc-400"
+                  >
+                    {task.title}
+                  </Link>
                 </div>
                 <form action={deleteTask.bind(null, task.id)}>
                   <button type="submit" className="text-xs text-zinc-600 transition-colors hover:text-red-400">

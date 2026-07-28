@@ -156,15 +156,17 @@ export default async function ProjectDetailPage({
                       aria-label="Toggle task status"
                     />
                   </form>
-                  <span
+                  <Link
+                    href={`/tasks/${task.id}`}
                     className={
                       task.status === "DONE"
-                        ? "text-zinc-500 line-through"
-                        : "text-zinc-200"
+                        ? "text-zinc-500 line-through hover:text-zinc-400"
+                        : "text-zinc-200 hover:text-indigo-400"
                     }
                   >
                     {task.title}
-                  </span>
+                  </Link>
+                  <PriorityBadge priority={task.priority} />
                   {task.dueDate && (
                     <span className="text-xs text-zinc-500">
                       {formatDate(task.dueDate)}

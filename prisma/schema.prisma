@@ -206,6 +206,9 @@ model Attachment {
 
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId String?
+
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId String?
 }
 
 enum ProjectStatus {
@@ -303,14 +306,25 @@ enum TaskStatus {
   DONE
 }
 
+enum TaskRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 model Task {
-  id        String     @id @default(cuid())
-  title     String
-  dueDate   DateTime?
-  status    TaskStatus @default(OPEN)
-  notes     String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id         String         @id @default(cuid())
+  title      String
+  dueDate    DateTime?
+  status     TaskStatus     @default(OPEN)
+  notes      String?
+  priority   Priority       @default(MEDIUM)
+  recurrence TaskRecurrence @default(NONE)
+  labels     String? // comma-separated for simplicity, same pattern as Contact.tags
+  progress   Int            @default(0) // 0-100
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   assignedTo   User?   @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   assignedToId String?
@@ -323,6 +337,8 @@ model Task {
 
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   projectId String?
+
+  attachments Attachment[]
 }
 
 enum ActivityType {

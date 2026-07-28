@@ -6,7 +6,22 @@ import { prisma } from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/storage";
 
 export type AttachmentFormState = { error?: string };
-export type AttachmentOwner = { contactId: string } | { projectId: string };
+export type AttachmentOwner =
+  | { contactId: string }
+  | { projectId: string }
+  | { taskId: string };
+
+function ownerId(owner: AttachmentOwner) {
+  if ("contactId" in owner) return owner.contactId;
+  if ("projectId" in owner) return owner.projectId;
+  return owner.taskId;
+}
+
+function revalidateOwner(owner: AttachmentOwner) {
+  if ("contactId" in owner) revalidatePath(`/contacts/${owner.contactId}`);
+  else if ("projectId" in owner) revalidatePath(`/projects/${owner.projectId}`);
+  else revalidatePath(`/tasks/${owner.taskId}`);
+}
 
 export async function uploadAttachment(
   owner: AttachmentOwner,
@@ -18,8 +33,7 @@ export async function uploadAttachment(
     return { error: "Choose a file to upload." };
   }
 
-  const ownerId = "contactId" in owner ? owner.contactId : owner.projectId;
-  const path = `${ownerId}/${randomUUID()}-${file.name}`;
+  const path = `${ownerId(owner)}/${randomUUID()}-${file.name}`;
 
   let url: string;
   try {
@@ -39,8 +53,7 @@ export async function uploadAttachment(
     },
   });
 
-  if ("contactId" in owner) revalidatePath(`/contacts/${owner.contactId}`);
-  else revalidatePath(`/projects/${owner.projectId}`);
+  revalidateOwner(owner);
   return {};
 }
 
@@ -51,4 +64,5 @@ export async function deleteAttachment(attachmentId: string) {
   await deleteFile(attachment.path).catch(() => {});
   if (attachment.contactId) revalidatePath(`/contacts/${attachment.contactId}`);
   if (attachment.projectId) revalidatePath(`/projects/${attachment.projectId}`);
+  if (attachment.taskId) revalidatePath(`/tasks/${attachment.taskId}`);
 }
