@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 import { ContactForm } from "../contact-form";
 import { updateContact, deleteContact } from "../actions";
 import { toggleTaskStatus, deleteTask } from "../../tasks/actions";
@@ -68,8 +69,9 @@ export default async function ContactDetailPage({
 }) {
   const { id } = await params;
   const { tab: initialTab } = await searchParams;
+  const stageLabels = await getStageLabels();
 
-  const [contact, companies] = await Promise.all([
+  const [contact, companies, serviceTypeRows] = await Promise.all([
     prisma.contact.findUnique({
       where: { id },
       include: {
@@ -92,9 +94,12 @@ export default async function ContactDetailPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    prisma.serviceType.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
   ]);
 
   if (!contact) notFound();
+
+  const serviceTypes = serviceTypeRows.map((s) => s.name);
 
   const updateContactWithId = updateContact.bind(null, contact.id);
   const deleteContactWithId = deleteContact.bind(null, contact.id);
@@ -129,7 +134,7 @@ export default async function ContactDetailPage({
                 <PaymentStatusBadge status={paymentStatus} />
               </>
             ) : (
-              <DealStageBadge stage={contact.pipelineStage} />
+              <DealStageBadge stage={contact.pipelineStage} label={stageLabels[contact.pipelineStage]} />
             )}
             <PriorityBadge priority={contact.priority} />
             {contact.leadScore !== null && (
@@ -166,6 +171,7 @@ export default async function ContactDetailPage({
                 <ContactForm
                   action={updateContactWithId}
                   companies={companies}
+                  stages={stageOptions(stageLabels)}
                   defaultValues={contact}
                   submitLabel="Save changes"
                 />
@@ -195,7 +201,11 @@ export default async function ContactDetailPage({
                   <h2 className="mb-4 text-sm font-semibold text-zinc-100">
                     Services purchased
                   </h2>
-                  <ServicesPanel contactId={contact.id} services={contact.services} />
+                  <ServicesPanel
+                    contactId={contact.id}
+                    services={contact.services}
+                    serviceTypes={serviceTypes}
+                  />
                 </section>
 
                 <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
@@ -342,7 +352,7 @@ export default async function ContactDetailPage({
                         >
                           {deal.title}
                         </Link>
-                        <DealStageBadge stage={deal.stage} />
+                        <DealStageBadge stage={deal.stage} label={stageLabels[deal.stage]} />
                       </li>
                     ))}
                   </ul>

@@ -43,10 +43,10 @@ const DEAL_STAGE_LABEL: Record<string, string> = {
   LOST: "Lost",
 };
 
-export function DealStageBadge({ stage }: { stage: string }) {
+export function DealStageBadge({ stage, label }: { stage: string; label?: string }) {
   return (
     <Badge variant={DEAL_STAGE_VARIANT[stage] ?? "default"}>
-      {DEAL_STAGE_LABEL[stage] ?? stage}
+      {label ?? DEAL_STAGE_LABEL[stage] ?? stage}
     </Badge>
   );
 }

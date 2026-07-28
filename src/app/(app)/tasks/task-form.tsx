@@ -33,6 +33,7 @@ export function TaskForm({
   action,
   contacts,
   projects,
+  taskLabels = [],
   defaultValues,
 }: {
   action: (
@@ -41,6 +42,7 @@ export function TaskForm({
   ) => Promise<TaskDetailFormState>;
   contacts: { id: string; firstName: string; lastName: string; businessName?: string | null }[];
   projects: { id: string; name: string }[];
+  taskLabels?: string[];
   defaultValues: {
     title?: string;
     dueDate?: string | Date | null;
@@ -110,10 +112,16 @@ export function TaskForm({
           <label className={labelClass}>Labels (comma separated)</label>
           <input
             name="labels"
+            list="task-label-suggestions"
             defaultValue={defaultValues.labels ?? ""}
             placeholder="urgent, client-facing"
             className={inputClass}
           />
+          <datalist id="task-label-suggestions">
+            {taskLabels.map((l) => (
+              <option key={l} value={l} />
+            ))}
+          </datalist>
         </div>
       </div>
       <div>

@@ -46,9 +46,11 @@ function ServiceRow({ service }: { service: ServiceItem }) {
 export function ServicesPanel({
   contactId,
   services,
+  serviceTypes = [],
 }: {
   contactId: string;
   services: ServiceItem[];
+  serviceTypes?: string[];
 }) {
   const action = addService.bind(null, contactId);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -74,9 +76,15 @@ export function ServicesPanel({
           <input
             name="name"
             required
+            list="service-type-suggestions"
             placeholder="SEO retainer"
             className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
+          <datalist id="service-type-suggestions">
+            {serviceTypes.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </div>
         <div>
           <label className="block text-xs font-medium text-zinc-400">Billing</label>

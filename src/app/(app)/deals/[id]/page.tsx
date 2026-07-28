@@ -9,6 +9,7 @@ import { TaskQuickForm } from "../../tasks/task-quick-form";
 import { ActivityQuickForm } from "../../activities/activity-quick-form";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ActivityTypeBadge } from "@/components/ui/badge";
+import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -25,7 +26,7 @@ export default async function DealDetailPage({
 }) {
   const { id } = await params;
 
-  const [deal, contacts, companies] = await Promise.all([
+  const [deal, contacts, companies, stageLabels] = await Promise.all([
     prisma.deal.findUnique({
       where: { id },
       include: {
@@ -43,6 +44,7 @@ export default async function DealDetailPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    getStageLabels(),
   ]);
 
   if (!deal) notFound();
@@ -85,6 +87,7 @@ export default async function DealDetailPage({
           action={updateDealWithId}
           contacts={contacts}
           companies={companies}
+          stages={stageOptions(stageLabels)}
           defaultValues={deal}
           submitLabel="Save changes"
         />

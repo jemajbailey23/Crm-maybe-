@@ -27,7 +27,7 @@ export default async function TaskDetailPage({
 }) {
   const { id } = await params;
 
-  const [task, contacts, projects] = await Promise.all([
+  const [task, contacts, projects, taskLabelRows] = await Promise.all([
     prisma.task.findUnique({
       where: { id },
       include: {
@@ -44,7 +44,9 @@ export default async function TaskDetailPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    prisma.taskLabelPreset.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
   ]);
+  const taskLabels = taskLabelRows.map((t) => t.name);
 
   if (!task) notFound();
 
@@ -117,6 +119,7 @@ export default async function TaskDetailPage({
           action={updateTaskWithId}
           contacts={contacts}
           projects={projects}
+          taskLabels={taskLabels}
           defaultValues={task}
         />
       </section>

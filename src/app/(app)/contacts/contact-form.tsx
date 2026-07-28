@@ -9,7 +9,7 @@ const inputClass =
   "mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500";
 const labelClass = "block text-sm font-medium text-zinc-300";
 
-const STAGES: { value: string; label: string }[] = [
+const DEFAULT_STAGES: { value: string; label: string }[] = [
   { value: "NEW", label: "New" },
   { value: "CONTACTED", label: "Contacted" },
   { value: "PROPOSAL", label: "Proposal" },
@@ -41,6 +41,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 export function ContactForm({
   action,
   companies,
+  stages = DEFAULT_STAGES,
   defaultValues,
   submitLabel,
 }: {
@@ -49,6 +50,7 @@ export function ContactForm({
     formData: FormData
   ) => Promise<ContactFormState>;
   companies: { id: string; name: string }[];
+  stages?: { value: string; label: string }[];
   defaultValues?: {
     firstName?: string;
     lastName?: string;
@@ -245,7 +247,7 @@ export function ContactForm({
             defaultValue={defaultValues?.pipelineStage ?? "NEW"}
             className={inputClass}
           >
-            {STAGES.map((stage) => (
+            {stages.map((stage) => (
               <option key={stage.value} value={stage.value}>
                 {stage.label}
               </option>

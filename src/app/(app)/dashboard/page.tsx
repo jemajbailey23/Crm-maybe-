@@ -8,6 +8,7 @@ import { ActivityTypeBadge, PriorityBadge } from "@/components/ui/badge";
 import { getNextBestActions } from "./next-best-actions";
 import { NextBestActionsPanel } from "./next-best-actions-panel";
 import { checkOverdueTasks } from "@/lib/automations";
+import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +39,6 @@ function formatDateTime(date: Date, timezone: string) {
   }).format(date);
 }
 
-const STAGES: { value: string; label: string }[] = [
-  { value: "NEW", label: "New" },
-  { value: "CONTACTED", label: "Contacted" },
-  { value: "PROPOSAL", label: "Proposal" },
-  { value: "WON", label: "Won" },
-  { value: "LOST", label: "Lost" },
-];
-
 const QUICK_ACTIONS = [
   { label: "Add Lead", href: "/contacts/new?status=LEAD" },
   { label: "Add Client", href: "/contacts/new?status=CLIENT" },
@@ -58,6 +51,7 @@ const QUICK_ACTIONS = [
 export default async function DashboardPage() {
   const user = await requireUser();
   await checkOverdueTasks();
+  const STAGES = stageOptions(await getStageLabels());
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());

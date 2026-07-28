@@ -5,7 +5,7 @@ import type { DealFormState } from "./actions";
 
 const initialState: DealFormState = {};
 
-const STAGES: { value: string; label: string }[] = [
+const DEFAULT_STAGES: { value: string; label: string }[] = [
   { value: "NEW", label: "New" },
   { value: "CONTACTED", label: "Contacted" },
   { value: "PROPOSAL", label: "Proposal" },
@@ -21,6 +21,7 @@ export function DealForm({
   action,
   contacts,
   companies,
+  stages = DEFAULT_STAGES,
   defaultValues,
   submitLabel,
 }: {
@@ -30,6 +31,7 @@ export function DealForm({
   ) => Promise<DealFormState>;
   contacts: { id: string; firstName: string; lastName: string }[];
   companies: { id: string; name: string }[];
+  stages?: { value: string; label: string }[];
   defaultValues?: {
     title?: string;
     value?: number | null;
@@ -74,7 +76,7 @@ export function DealForm({
             defaultValue={defaultValues?.stage ?? "NEW"}
             className={inputClass}
           >
-            {STAGES.map((stage) => (
+            {stages.map((stage) => (
               <option key={stage.value} value={stage.value}>
                 {stage.label}
               </option>

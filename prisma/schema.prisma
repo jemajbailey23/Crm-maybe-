@@ -31,6 +31,10 @@ model User {
   // No expense tracking exists yet, so this is a manually-set assumption.
   profitMarginPercent Int @default(70)
 
+  // Settings
+  brandColor         String @default("indigo")
+  defaultLandingPage String @default("/dashboard")
+
   tasks               Task[]
   activities          Activity[]
   passwordResetTokens PasswordResetToken[]
@@ -484,4 +488,30 @@ model AutomationRun {
 
   rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   ruleId String
+}
+
+// Custom display label for one of the fixed DealStage values. The stage set
+// itself (NEW/CONTACTED/PROPOSAL/WON/LOST) stays fixed since WON/LOST drive
+// revenue and automation logic throughout the app — only the label is
+// customizable.
+model PipelineStageLabel {
+  id    String    @id @default(cuid())
+  stage DealStage @unique
+  label String
+}
+
+// Suggested service names shown when adding a service to a client — services
+// themselves stay free text, this just powers the autocomplete list.
+model ServiceType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+// Suggested task labels shown when tagging a task — Task.labels stays free
+// text, this just powers the autocomplete list.
+model TaskLabelPreset {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
 }

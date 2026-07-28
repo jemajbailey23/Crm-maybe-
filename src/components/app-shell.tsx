@@ -18,6 +18,7 @@ import {
   AssistantIcon,
   AutomationsIcon,
   BookingIcon,
+  SettingsIcon,
 } from "@/components/icons";
 
 function Logo() {
@@ -74,6 +75,9 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
       </NavLink>
       <NavLink href="/booking" icon={<BookingIcon />}>
         Booking
+      </NavLink>
+      <NavLink href="/settings" icon={<SettingsIcon />}>
+        Settings
       </NavLink>
     </nav>
   );

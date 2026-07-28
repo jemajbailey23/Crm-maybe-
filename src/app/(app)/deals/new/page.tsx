@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { DealForm } from "../deal-form";
 import { createDeal } from "../actions";
+import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 
 export default async function NewDealPage({
   searchParams,
@@ -14,7 +15,7 @@ export default async function NewDealPage({
 }) {
   const { contactId, companyId, title, stage } = await searchParams;
 
-  const [contacts, companies] = await Promise.all([
+  const [contacts, companies, stageLabels] = await Promise.all([
     prisma.contact.findMany({
       orderBy: { firstName: "asc" },
       select: { id: true, firstName: true, lastName: true },
@@ -23,6 +24,7 @@ export default async function NewDealPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    getStageLabels(),
   ]);
 
   return (
@@ -36,6 +38,7 @@ export default async function NewDealPage({
           action={createDeal}
           contacts={contacts}
           companies={companies}
+          stages={stageOptions(stageLabels)}
           defaultValues={{ contactId, companyId, title, stage }}
           submitLabel="Create deal"
         />

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ContactForm } from "../contact-form";
 import { createContact } from "../actions";
+import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 
 export default async function NewContactPage({
   searchParams,
@@ -8,10 +9,13 @@ export default async function NewContactPage({
   searchParams: Promise<{ companyId?: string; status?: string }>;
 }) {
   const { companyId, status } = await searchParams;
-  const companies = await prisma.company.findMany({
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
-  });
+  const [companies, stageLabels] = await Promise.all([
+    prisma.company.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    getStageLabels(),
+  ]);
 
   return (
     <div className="max-w-xl space-y-6">
@@ -23,6 +27,7 @@ export default async function NewContactPage({
         <ContactForm
           action={createContact}
           companies={companies}
+          stages={stageOptions(stageLabels)}
           defaultValues={{ companyId, status }}
           submitLabel="Create contact"
         />

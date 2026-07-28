@@ -5,6 +5,7 @@ import { CompanyForm } from "../company-form";
 import { updateCompany, deleteCompany } from "../actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DealStageBadge } from "@/components/ui/badge";
+import { getStageLabels } from "@/lib/pipeline-stages";
 
 export default async function CompanyDetailPage({
   params,
@@ -12,6 +13,8 @@ export default async function CompanyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  const stageLabels = await getStageLabels();
 
   const company = await prisma.company.findUnique({
     where: { id },
@@ -103,7 +106,7 @@ export default async function CompanyDetailPage({
                 <Link href={`/deals/${deal.id}`} className="font-medium text-zinc-100 hover:text-indigo-400">
                   {deal.title}
                 </Link>
-                <DealStageBadge stage={deal.stage} />
+                <DealStageBadge stage={deal.stage} label={stageLabels[deal.stage]} />
               </li>
             ))}
           </ul>

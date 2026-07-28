@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { DealStageSelect } from "./deal-stage-select";
 import { SearchBox } from "@/components/search-box";
+import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 
 function formatCurrency(value: number | null) {
   if (value === null) return null;
@@ -13,17 +14,13 @@ function formatCurrency(value: number | null) {
   }).format(value);
 }
 
-const STAGES: {
-  value: "NEW" | "CONTACTED" | "PROPOSAL" | "WON" | "LOST";
-  label: string;
-  dot: string;
-}[] = [
-  { value: "NEW", label: "New", dot: "bg-zinc-500" },
-  { value: "CONTACTED", label: "Contacted", dot: "bg-blue-500" },
-  { value: "PROPOSAL", label: "Proposal", dot: "bg-amber-500" },
-  { value: "WON", label: "Won", dot: "bg-emerald-500" },
-  { value: "LOST", label: "Lost", dot: "bg-red-500" },
-];
+const STAGE_DOTS: Record<"NEW" | "CONTACTED" | "PROPOSAL" | "WON" | "LOST", string> = {
+  NEW: "bg-zinc-500",
+  CONTACTED: "bg-blue-500",
+  PROPOSAL: "bg-amber-500",
+  WON: "bg-emerald-500",
+  LOST: "bg-red-500",
+};
 
 export default async function DealsPage({
   searchParams,
@@ -31,6 +28,12 @@ export default async function DealsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+
+  const stageLabels = await getStageLabels();
+  const STAGES = stageOptions(stageLabels).map((s) => ({
+    ...s,
+    dot: STAGE_DOTS[s.value as keyof typeof STAGE_DOTS],
+  }));
 
   const deals = await prisma.deal.findMany({
     where: q
@@ -121,7 +124,11 @@ export default async function DealsPage({
                           : deal.company?.name ?? ""}
                       </p>
                       <div className="mt-2">
-                        <DealStageSelect dealId={deal.id} stage={deal.stage} />
+                        <DealStageSelect
+                          dealId={deal.id}
+                          stage={deal.stage}
+                          stages={stageOptions(stageLabels)}
+                        />
                       </div>
                     </div>
                   ))
