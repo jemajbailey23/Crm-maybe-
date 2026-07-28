@@ -14,6 +14,7 @@ import {
   TasksIcon,
   FinancialsIcon,
   KnowledgeIcon,
+  AssistantIcon,
   BookingIcon,
 } from "@/components/icons";
 
@@ -59,6 +60,9 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
       </NavLink>
       <NavLink href="/knowledge" icon={<KnowledgeIcon />}>
         Knowledge
+      </NavLink>
+      <NavLink href="/assistant" icon={<AssistantIcon />}>
+        AI Assistant
       </NavLink>
       <NavLink href="/booking" icon={<BookingIcon />}>
         Booking

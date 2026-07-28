@@ -75,6 +75,15 @@ export function KnowledgeIcon({ className = base }: IconProps) {
   );
 }
 
+export function AssistantIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3M12 18v3M4.2 7.8l2.1 1.2M17.7 15l2.1 1.2M4.2 16.2l2.1-1.2M17.7 9l2.1-1.2" />
+      <circle cx="12" cy="12" r="4.25" />
+    </svg>
+  );
+}
+
 export function BookingIcon({ className = base }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>

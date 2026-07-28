@@ -11,6 +11,7 @@
     "reset-password": "node scripts/reset-password.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@prisma/client": "^6.19.3",
     "@supabase/supabase-js": "^2.110.9",
     "bcryptjs": "^3.0.3",
