@@ -30,7 +30,7 @@ export function DealStageSelect({
           updateDealStage(dealId, nextStage);
         });
       }}
-      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 disabled:opacity-50"
+      className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
     >
       {STAGES.map((s) => (
         <option key={s.value} value={s.value}>

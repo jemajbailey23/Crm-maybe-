@@ -13,6 +13,10 @@ const STAGES: { value: string; label: string }[] = [
   { value: "LOST", label: "Lost" },
 ];
 
+const inputClass =
+  "mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500";
+const labelClass = "block text-sm font-medium text-zinc-300";
+
 export function DealForm({
   action,
   contacts,
@@ -41,39 +45,33 @@ export function DealForm({
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-700">
-          Deal title
-        </label>
+        <label className={labelClass}>Deal title</label>
         <input
           name="title"
           required
           defaultValue={defaultValues?.title}
           placeholder="Website redesign — Acme Corp"
-          className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className={inputClass}
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Value (USD)
-          </label>
+          <label className={labelClass}>Value (USD)</label>
           <input
             name="value"
             type="number"
             min="0"
             step="1"
             defaultValue={defaultValues?.value ?? ""}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className={inputClass}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Stage
-          </label>
+          <label className={labelClass}>Stage</label>
           <select
             name="stage"
             defaultValue={defaultValues?.stage ?? "NEW"}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className={inputClass}
           >
             {STAGES.map((stage) => (
               <option key={stage.value} value={stage.value}>
@@ -85,13 +83,11 @@ export function DealForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Contact
-          </label>
+          <label className={labelClass}>Contact</label>
           <select
             name="contactId"
             defaultValue={defaultValues?.contactId ?? ""}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className={inputClass}
           >
             <option value="">No contact</option>
             {contacts.map((contact) => (
@@ -102,13 +98,11 @@ export function DealForm({
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Company
-          </label>
+          <label className={labelClass}>Company</label>
           <select
             name="companyId"
             defaultValue={defaultValues?.companyId ?? ""}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className={inputClass}
           >
             <option value="">No company</option>
             {companies.map((company) => (
@@ -120,25 +114,23 @@ export function DealForm({
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700">
-          Notes
-        </label>
+        <label className={labelClass}>Notes</label>
         <textarea
           name="notes"
           rows={3}
           defaultValue={defaultValues?.notes ?? ""}
-          className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className={inputClass}
         />
       </div>
       {state?.error && (
-        <p className="text-sm text-red-600" aria-live="polite">
+        <p className="text-sm text-red-400" aria-live="polite">
           {state.error}
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+        className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400 disabled:opacity-50"
       >
         {pending ? "Saving…" : submitLabel}
       </button>

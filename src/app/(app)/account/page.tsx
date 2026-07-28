@@ -8,22 +8,22 @@ export default async function AccountPage() {
   return (
     <div className="max-w-lg space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Account</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">Account</h1>
+        <p className="mt-1 text-sm text-zinc-500">
           Manage your name and the email you use to log in and receive
           notifications.
         </p>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">Name</h2>
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Name</h2>
         <ChangeNameForm currentName={user.name} />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">Email</h2>
-        <p className="mb-4 text-sm text-slate-600">
-          Current email: <span className="font-medium text-slate-900">{user.email}</span>
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Email</h2>
+        <p className="mb-4 text-sm text-zinc-400">
+          Current email: <span className="font-medium text-zinc-100">{user.email}</span>
         </p>
         <ChangeEmailForm />
       </section>

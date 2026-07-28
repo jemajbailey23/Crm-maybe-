@@ -27,14 +27,16 @@ export default async function CompaniesPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Companies</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
+            Companies
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
             Businesses you work with or sell to.
           </p>
         </div>
         <Link
           href="/companies/new"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400"
         >
           New company
         </Link>
@@ -44,15 +46,15 @@ export default async function CompaniesPage({
         <SearchBox key={q ?? ""} placeholder="Search companies…" />
       </Suspense>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="animate-slide-up overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
         {companies.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">
+          <p className="p-6 text-sm text-zinc-500">
             {q ? (
               "No companies match your search."
             ) : (
               <>
                 No companies yet.{" "}
-                <Link href="/companies/new" className="font-medium text-slate-900 underline">
+                <Link href="/companies/new" className="font-medium text-indigo-400 hover:text-indigo-300">
                   Add your first one
                 </Link>
                 .
@@ -60,41 +62,41 @@ export default async function CompaniesPage({
             )}
           </p>
         ) : (
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+          <table className="min-w-full divide-y divide-zinc-800">
+            <thead className="bg-zinc-900/60">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-slate-500">
+                <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Name
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-slate-500">
+                <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Website
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-slate-500">
+                <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Contacts
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-slate-500">
+                <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Deals
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-zinc-800/60">
               {companies.map((company) => (
-                <tr key={company.id} className="hover:bg-slate-50">
+                <tr key={company.id} className="transition-colors hover:bg-zinc-800/30">
                   <td className="px-4 py-3 text-sm">
                     <Link
                       href={`/companies/${company.id}`}
-                      className="font-medium text-slate-900 hover:underline"
+                      className="font-medium text-zinc-100 hover:text-indigo-400"
                     >
                       {company.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm text-zinc-400">
                     {company.website ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm text-zinc-400">
                     {company._count.contacts}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm text-zinc-400">
                     {company._count.deals}
                   </td>
                 </tr>

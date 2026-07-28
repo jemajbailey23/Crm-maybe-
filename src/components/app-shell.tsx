@@ -3,34 +3,74 @@
 import { useState } from "react";
 import Link from "next/link";
 import { NavLink } from "@/components/nav-link";
+import { CommandPalette } from "@/components/command-palette";
 import { logout } from "@/app/(app)/session-actions";
+import {
+  DashboardIcon,
+  ContactsIcon,
+  CompaniesIcon,
+  PipelineIcon,
+  TasksIcon,
+  BookingIcon,
+} from "@/components/icons";
+
+function Logo() {
+  return (
+    <div className="flex items-center gap-2.5 px-3">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white shadow-lg shadow-indigo-500/20">
+        BV
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-zinc-100">
+          Bailey Ventures
+        </p>
+        <p className="text-[11px] text-zinc-500">Digital · CRM</p>
+      </div>
+    </div>
+  );
+}
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-1 flex-col gap-1" onClick={onNavigate}>
-      <NavLink href="/dashboard">Dashboard</NavLink>
-      <NavLink href="/contacts">Contacts</NavLink>
-      <NavLink href="/companies">Companies</NavLink>
-      <NavLink href="/deals">Pipeline</NavLink>
-      <NavLink href="/tasks">Tasks</NavLink>
-      <NavLink href="/booking">Booking</NavLink>
+    <nav className="flex flex-1 flex-col gap-0.5" onClick={onNavigate}>
+      <NavLink href="/dashboard" icon={<DashboardIcon />}>
+        Dashboard
+      </NavLink>
+      <NavLink href="/contacts" icon={<ContactsIcon />}>
+        Contacts
+      </NavLink>
+      <NavLink href="/companies" icon={<CompaniesIcon />}>
+        Companies
+      </NavLink>
+      <NavLink href="/deals" icon={<PipelineIcon />}>
+        Pipeline
+      </NavLink>
+      <NavLink href="/tasks" icon={<TasksIcon />}>
+        Tasks
+      </NavLink>
+      <NavLink href="/booking" icon={<BookingIcon />}>
+        Booking
+      </NavLink>
     </nav>
   );
 }
 
 function UserFooter({ userName }: { userName: string }) {
   return (
-    <div className="border-t border-slate-200 pt-3">
+    <div className="border-t border-zinc-800 pt-3">
       <Link
         href="/account"
-        className="block truncate rounded-md px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+        className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-zinc-800/40 hover:text-zinc-300"
       >
-        {userName}
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-semibold text-zinc-300">
+          {userName.charAt(0).toUpperCase()}
+        </span>
+        <span className="truncate">{userName}</span>
       </Link>
       <form action={logout}>
         <button
           type="submit"
-          className="mt-1 w-full rounded-md px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          className="mt-1 w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-500 transition-colors hover:bg-zinc-800/40 hover:text-zinc-300"
         >
           Sign out
         </button>
@@ -49,19 +89,14 @@ export function AppShell({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col md:flex-row">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">
-            Bailey Ventures Digital
-          </p>
-          <p className="text-xs text-slate-500">CRM</p>
-        </div>
+    <div className="flex min-h-screen flex-1 flex-col bg-zinc-950 md:flex-row">
+      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950/80 px-4 py-3 backdrop-blur-sm md:hidden">
+        <Logo />
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open menu"
-          className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
+          className="rounded-md p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -79,22 +114,17 @@ export function AppShell({
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div
-            className="absolute inset-0 bg-black/30"
+            className="animate-overlay-in absolute inset-0 bg-black/60"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute left-0 top-0 flex h-full w-64 flex-col bg-white px-3 py-4 shadow-lg">
-            <div className="mb-6 flex items-center justify-between px-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">
-                  Bailey Ventures Digital
-                </p>
-                <p className="text-xs text-slate-500">CRM</p>
-              </div>
+          <div className="animate-slide-up absolute left-0 top-0 flex h-full w-64 flex-col border-r border-zinc-800 bg-zinc-950 px-3 py-4 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <Logo />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close menu"
-                className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+                className="rounded-md p-1 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -108,24 +138,29 @@ export function AppShell({
                 </svg>
               </button>
             </div>
+            <div className="mb-4">
+              <CommandPalette />
+            </div>
             <NavItems onNavigate={() => setOpen(false)} />
             <UserFooter userName={userName} />
           </div>
         </div>
       )}
 
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-slate-200 bg-white px-3 py-4 md:flex">
-        <div className="mb-6 px-3">
-          <p className="text-sm font-semibold text-slate-900">
-            Bailey Ventures Digital
-          </p>
-          <p className="text-xs text-slate-500">CRM</p>
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 px-3 py-4 md:flex">
+        <div className="mb-5">
+          <Logo />
+        </div>
+        <div className="mb-4">
+          <CommandPalette />
         </div>
         <NavItems />
         <UserFooter userName={userName} />
       </aside>
 
-      <main className="flex-1 bg-slate-50 px-4 py-6 md:px-8">{children}</main>
+      <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+        <div className="animate-fade-in mx-auto max-w-6xl">{children}</div>
+      </main>
     </div>
   );
 }

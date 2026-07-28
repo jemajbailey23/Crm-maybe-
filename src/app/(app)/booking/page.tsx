@@ -33,25 +33,25 @@ export default async function BookingSettingsPage() {
   return (
     <div className="max-w-2xl space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Booking</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">Booking</h1>
+        <p className="mt-1 text-sm text-zinc-500">
           Set your availability, and share your booking link so people can
           schedule a call directly into your CRM.
         </p>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
+      <div className="animate-slide-up flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
             Your booking link
           </p>
-          <p className="truncate text-sm text-slate-900">{bookingLink}</p>
+          <p className="truncate text-sm text-zinc-100">{bookingLink}</p>
         </div>
         <CopyLinkButton text={bookingLink} />
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">
           Weekly availability
         </h2>
         <AvailabilityForm
@@ -61,24 +61,24 @@ export default async function BookingSettingsPage() {
         />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">
           Upcoming calls
         </h2>
         {upcomingBookings.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing booked yet.</p>
+          <p className="text-sm text-zinc-500">Nothing booked yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-zinc-800/60">
             {upcomingBookings.map((booking) => (
-              <li key={booking.id} className="py-2 text-sm">
-                <p className="font-medium text-slate-900">
+              <li key={booking.id} className="py-2.5 text-sm">
+                <p className="font-medium text-zinc-100">
                   {formatDateTime(booking.startsAt, user.bookingTimezone)}
                 </p>
-                <p className="text-slate-500">
+                <p className="text-zinc-500">
                   {booking.contact ? (
                     <Link
                       href={`/contacts/${booking.contact.id}`}
-                      className="hover:underline"
+                      className="hover:text-indigo-400"
                     >
                       {booking.name}
                     </Link>

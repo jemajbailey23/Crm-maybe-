@@ -55,7 +55,7 @@ export function BookingPicker({
 
   if (slots.length === 0) {
     return (
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-zinc-500">
         No times are available right now — check back soon.
       </p>
     );
@@ -63,11 +63,16 @@ export function BookingPicker({
 
   if (state?.success) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-        <p className="text-sm font-semibold text-slate-900">
+      <div className="animate-scale-in rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 text-center">
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m5 13 4 4L19 7" />
+          </svg>
+        </div>
+        <p className="text-sm font-semibold text-zinc-100">
           You&apos;re booked!
         </p>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-zinc-500">
           Check your email for confirmation.
         </p>
       </div>
@@ -76,15 +81,15 @@ export function BookingPicker({
 
   if (!mounted) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <div className="flex gap-2">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-9 w-20 shrink-0 animate-pulse rounded-md bg-slate-100" />
+            <div key={i} className="h-9 w-20 shrink-0 animate-pulse rounded-md bg-zinc-800/60" />
           ))}
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-9 animate-pulse rounded-md bg-slate-100" />
+            <div key={i} className="h-9 animate-pulse rounded-md bg-zinc-800/60" />
           ))}
         </div>
       </div>
@@ -95,7 +100,7 @@ export function BookingPicker({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <div className="flex gap-2 overflow-x-auto pb-2">
           {days.map((day, i) => (
             <button
@@ -105,10 +110,10 @@ export function BookingPicker({
                 setSelectedDayIndex(i);
                 setSelectedSlot(null);
               }}
-              className={`shrink-0 rounded-md px-3 py-2 text-xs font-medium ${
+              className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                 i === selectedDayIndex
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
               }`}
             >
               {new Intl.DateTimeFormat("en-US", {
@@ -125,10 +130,10 @@ export function BookingPicker({
               key={time.toISOString()}
               type="button"
               onClick={() => setSelectedSlot(time)}
-              className={`rounded-md border px-2 py-2 text-xs font-medium ${
+              className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
                 selectedSlot?.getTime() === time.getTime()
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                  ? "border-indigo-500 bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                  : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800"
               }`}
             >
               {new Intl.DateTimeFormat("en-US", {
@@ -143,7 +148,7 @@ export function BookingPicker({
       {selectedSlot && (
         <form
           action={formAction}
-          className="space-y-4 rounded-lg border border-slate-200 bg-white p-6"
+          className="animate-slide-up space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6"
         >
           <input type="hidden" name="startsAt" value={selectedSlot.toISOString()} />
           <input
@@ -151,7 +156,7 @@ export function BookingPicker({
             name="visitorTimezone"
             value={Intl.DateTimeFormat().resolvedOptions().timeZone}
           />
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-zinc-400">
             {new Intl.DateTimeFormat("en-US", {
               dateStyle: "full",
               timeStyle: "short",
@@ -159,45 +164,45 @@ export function BookingPicker({
             · {slotMinutes} min
           </p>
           <div>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-zinc-300">
               Name
             </label>
             <input
               name="name"
               required
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+              className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-zinc-300">
               Email
             </label>
             <input
               name="email"
               type="email"
               required
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+              className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-zinc-300">
               What would you like to talk about? (optional)
             </label>
             <textarea
               name="notes"
               rows={3}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+              className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
           {state?.error && (
-            <p className="text-sm text-red-600" aria-live="polite">
+            <p className="text-sm text-red-400" aria-live="polite">
               {state.error}
             </p>
           )}
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+            className="w-full rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400 disabled:opacity-50"
           >
             {pending ? "Booking…" : "Confirm booking"}
           </button>

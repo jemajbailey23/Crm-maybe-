@@ -15,18 +15,20 @@ export default async function ResetPasswordPage({
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm">
+      <div className="animate-slide-up w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-50">
             Set a new password
           </h1>
         </div>
         {token ? (
-          <ResetPasswordForm token={token} />
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+            <ResetPasswordForm token={token} />
+          </div>
         ) : (
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-red-400">
             This reset link is missing or invalid.{" "}
-            <Link href="/forgot-password" className="font-medium underline">
+            <Link href="/forgot-password" className="font-medium text-indigo-400 hover:text-indigo-300">
               Request a new one
             </Link>
             .

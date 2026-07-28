@@ -13,7 +13,7 @@ export function ForgotPasswordForm() {
 
   if (state?.submitted) {
     return (
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-zinc-400">
         If an account exists for that email, we&apos;ve sent a link to reset
         the password. It expires in 1 hour.
       </p>
@@ -23,7 +23,7 @@ export function ForgotPasswordForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
           Email
         </label>
         <input
@@ -32,13 +32,13 @@ export function ForgotPasswordForm() {
           type="email"
           required
           autoComplete="email"
-          className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+        className="w-full rounded-lg bg-indigo-500 px-3 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400 disabled:opacity-50"
       >
         {pending ? "Sending…" : "Send reset link"}
       </button>

@@ -23,7 +23,7 @@ export function ImportForm() {
         className="space-y-4"
       >
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-zinc-300">
             CSV file
           </label>
           <input
@@ -31,26 +31,26 @@ export function ImportForm() {
             name="file"
             accept=".csv,text/csv"
             required
-            className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-slate-800"
+            className="mt-1 block w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-400"
           />
         </div>
         {state?.error && (
-          <p className="text-sm text-red-600" aria-live="polite">
+          <p className="text-sm text-red-400" aria-live="polite">
             {state.error}
           </p>
         )}
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400 disabled:opacity-50"
         >
           {pending ? "Importing…" : "Import contacts"}
         </button>
       </form>
 
       {state?.result && (
-        <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm">
-          <p className="font-medium text-slate-900">
+        <div className="animate-slide-up rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-sm">
+          <p className="font-medium text-zinc-100">
             Imported {state.result.imported} contact
             {state.result.imported === 1 ? "" : "s"}
             {state.result.companiesCreated > 0 &&
@@ -60,11 +60,11 @@ export function ImportForm() {
           </p>
           {state.result.skipped.length > 0 && (
             <div className="mt-2">
-              <p className="text-slate-700">
+              <p className="text-zinc-400">
                 Skipped {state.result.skipped.length} row
                 {state.result.skipped.length === 1 ? "" : "s"}:
               </p>
-              <ul className="mt-1 list-inside list-disc text-slate-500">
+              <ul className="mt-1 list-inside list-disc text-zinc-500">
                 {state.result.skipped.map((s) => (
                   <li key={s.row}>
                     Row {s.row}: {s.reason}

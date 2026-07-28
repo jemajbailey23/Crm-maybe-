@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { CompanyForm } from "../company-form";
 import { updateCompany, deleteCompany } from "../actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { DealStageBadge } from "@/components/ui/badge";
 
 export default async function CompanyDetailPage({
   params,
@@ -29,25 +30,25 @@ export default async function CompanyDetailPage({
     <div className="max-w-3xl space-y-8">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
             {company.name}
           </h1>
           {company.website && (
-            <p className="text-sm text-slate-500">{company.website}</p>
+            <p className="mt-1 text-sm text-zinc-500">{company.website}</p>
           )}
         </div>
         <form action={deleteCompanyWithId}>
           <ConfirmSubmitButton
             confirmMessage={`Delete ${company.name}? This can't be undone.`}
-            className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-red-500/30 px-3 py-1.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
           >
             Delete company
           </ConfirmSubmitButton>
         </form>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">Details</h2>
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Details</h2>
         <CompanyForm
           action={updateCompanyWithId}
           defaultValues={company}
@@ -55,25 +56,25 @@ export default async function CompanyDetailPage({
         />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Contacts</h2>
+          <h2 className="text-sm font-semibold text-zinc-100">Contacts</h2>
           <Link
             href={`/contacts/new?companyId=${company.id}`}
-            className="text-xs font-medium text-slate-500 hover:text-slate-900"
+            className="text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
           >
             + New contact
           </Link>
         </div>
         {company.contacts.length === 0 ? (
-          <p className="text-sm text-slate-500">No contacts at this company yet.</p>
+          <p className="text-sm text-zinc-500">No contacts at this company yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-zinc-800/60">
             {company.contacts.map((contact) => (
-              <li key={contact.id} className="py-2 text-sm">
+              <li key={contact.id} className="py-2.5 text-sm">
                 <Link
                   href={`/contacts/${contact.id}`}
-                  className="font-medium text-slate-900 hover:underline"
+                  className="font-medium text-zinc-100 hover:text-indigo-400"
                 >
                   {contact.firstName} {contact.lastName}
                 </Link>
@@ -83,26 +84,26 @@ export default async function CompanyDetailPage({
         )}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6">
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Deals</h2>
+          <h2 className="text-sm font-semibold text-zinc-100">Deals</h2>
           <Link
             href={`/deals/new?companyId=${company.id}`}
-            className="text-xs font-medium text-slate-500 hover:text-slate-900"
+            className="text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
           >
             + New deal
           </Link>
         </div>
         {company.deals.length === 0 ? (
-          <p className="text-sm text-slate-500">No deals for this company yet.</p>
+          <p className="text-sm text-zinc-500">No deals for this company yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-zinc-800/60">
             {company.deals.map((deal) => (
-              <li key={deal.id} className="flex items-center justify-between py-2 text-sm">
-                <Link href={`/deals/${deal.id}`} className="font-medium text-slate-900 hover:underline">
+              <li key={deal.id} className="flex items-center justify-between py-2.5 text-sm">
+                <Link href={`/deals/${deal.id}`} className="font-medium text-zinc-100 hover:text-indigo-400">
                   {deal.title}
                 </Link>
-                <span className="text-xs text-slate-500">{deal.stage}</span>
+                <DealStageBadge stage={deal.stage} />
               </li>
             ))}
           </ul>

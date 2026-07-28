@@ -40,7 +40,7 @@ export function AvailabilityForm({
       <div className="space-y-2">
         {days.map((day, i) => (
           <div key={i} className="flex items-center gap-3 text-sm">
-            <label className="flex w-32 items-center gap-2">
+            <label className="flex w-32 items-center gap-2 text-zinc-300">
               <input
                 type="checkbox"
                 name={`enabled-${i}`}
@@ -52,7 +52,7 @@ export function AvailabilityForm({
                     )
                   )
                 }
-                className="rounded border-slate-300"
+                className="rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500"
               />
               {WEEKDAY_LABELS[i]}
             </label>
@@ -68,9 +68,9 @@ export function AvailabilityForm({
                   )
                 )
               }
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm disabled:opacity-50"
+              className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40"
             />
-            <span className="text-slate-400">to</span>
+            <span className="text-zinc-600">to</span>
             <input
               type="time"
               name={`end-${i}`}
@@ -83,7 +83,7 @@ export function AvailabilityForm({
                   )
                 )
               }
-              className="rounded-md border border-slate-300 px-2 py-1 text-sm disabled:opacity-50"
+              className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40"
             />
           </div>
         ))}
@@ -91,13 +91,13 @@ export function AvailabilityForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-zinc-300">
             Call length
           </label>
           <select
             name="slotMinutes"
             defaultValue={slotMinutes}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             <option value={15}>15 minutes</option>
             <option value={30}>30 minutes</option>
@@ -106,13 +106,13 @@ export function AvailabilityForm({
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-zinc-300">
             Your timezone
           </label>
           <select
             name="timezone"
             defaultValue={timezone}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             {COMMON_TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>
@@ -124,12 +124,12 @@ export function AvailabilityForm({
       </div>
 
       {state?.error && (
-        <p className="text-sm text-red-600" aria-live="polite">
+        <p className="text-sm text-red-400" aria-live="polite">
           {state.error}
         </p>
       )}
       {state?.success && (
-        <p className="text-sm text-green-600" aria-live="polite">
+        <p className="text-sm text-emerald-400" aria-live="polite">
           Saved.
         </p>
       )}
@@ -137,7 +137,7 @@ export function AvailabilityForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+        className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400 disabled:opacity-50"
       >
         {pending ? "Saving…" : "Save availability"}
       </button>

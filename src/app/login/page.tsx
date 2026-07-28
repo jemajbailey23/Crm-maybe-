@@ -9,16 +9,21 @@ export default async function LoginPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm">
+      <div className="animate-slide-up w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white shadow-lg shadow-indigo-500/20">
+            BV
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-50">
             Bailey Ventures Digital
           </h1>
-          <p className="mt-1 text-sm text-slate-500">Sign in to your CRM.</p>
+          <p className="mt-1 text-sm text-zinc-500">Sign in to your CRM.</p>
         </div>
-        <LoginForm />
-        <p className="mt-6 text-center text-sm text-slate-500">
-          <Link href="/forgot-password" className="font-medium text-slate-900 hover:underline">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+          <LoginForm />
+        </div>
+        <p className="mt-6 text-center text-sm text-zinc-500">
+          <Link href="/forgot-password" className="font-medium text-indigo-400 hover:text-indigo-300">
             Forgot your password?
           </Link>
         </p>

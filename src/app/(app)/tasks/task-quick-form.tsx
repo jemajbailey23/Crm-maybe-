@@ -22,35 +22,35 @@ export function TaskQuickForm({
       {contactId && <input type="hidden" name="contactId" value={contactId} />}
       {dealId && <input type="hidden" name="dealId" value={dealId} />}
       <div className="flex-1 min-w-[10rem]">
-        <label className="block text-xs font-medium text-slate-600">
+        <label className="block text-xs font-medium text-zinc-400">
           New task
         </label>
         <input
           name="title"
           required
           placeholder="Follow up call"
-          className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
       <div>
-        <label className="block text-xs font-medium text-slate-600">
+        <label className="block text-xs font-medium text-zinc-400">
           Due
         </label>
         <input
           name="dueDate"
           type="date"
-          className="mt-1 block rounded-md border border-slate-300 px-2 py-1.5 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className="mt-1 block rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+        className="rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400 disabled:opacity-50"
       >
         {pending ? "Adding…" : "Add task"}
       </button>
       {state?.error && (
-        <p className="w-full text-sm text-red-600">{state.error}</p>
+        <p className="w-full text-sm text-red-400">{state.error}</p>
       )}
     </form>
   );

@@ -32,7 +32,7 @@ export function SearchBox({ placeholder }: { placeholder: string }) {
         fill="none"
         stroke="currentColor"
         strokeWidth={2}
-        className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600"
       >
         <circle cx="11" cy="11" r="7" />
         <path strokeLinecap="round" d="m20 20-3.5-3.5" />
@@ -42,7 +42,7 @@ export function SearchBox({ placeholder }: { placeholder: string }) {
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full max-w-xs rounded-md border border-slate-300 py-2 pl-8 pr-3 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+        className="w-full max-w-xs rounded-lg border border-zinc-800 bg-zinc-900 py-2 pl-8 pr-3 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
       />
     </div>
   );

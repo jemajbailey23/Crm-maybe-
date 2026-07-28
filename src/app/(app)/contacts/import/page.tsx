@@ -5,31 +5,31 @@ export default function ImportContactsPage() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Import contacts</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">Import contacts</h1>
+        <p className="mt-1 text-sm text-zinc-500">
           Upload a CSV to bring in contacts from a spreadsheet or another
           tool.
         </p>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
-        <div className="text-sm text-slate-600">
+      <div className="animate-slide-up space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <div className="text-sm text-zinc-400">
           <p>
-            Expected columns: <code className="text-slate-900">firstName</code>,{" "}
-            <code className="text-slate-900">lastName</code> (required), plus
-            any of <code className="text-slate-900">email</code>,{" "}
-            <code className="text-slate-900">phone</code>,{" "}
-            <code className="text-slate-900">title</code>,{" "}
-            <code className="text-slate-900">company</code>,{" "}
-            <code className="text-slate-900">tags</code>,{" "}
-            <code className="text-slate-900">notes</code>. Column order
+            Expected columns: <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">firstName</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">lastName</code> (required), plus
+            any of <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">email</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">phone</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">title</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">company</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">tags</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">notes</code>. Column order
             doesn&apos;t matter, and matching is case-insensitive. A company
             name that doesn&apos;t exist yet gets created automatically.
           </p>
           <a
             href="/contacts-template.csv"
             download
-            className="mt-2 inline-block font-medium text-slate-900 underline"
+            className="mt-2 inline-block font-medium text-indigo-400 hover:text-indigo-300"
           >
             Download an example CSV
           </a>
@@ -38,7 +38,7 @@ export default function ImportContactsPage() {
         <ImportForm />
       </div>
 
-      <Link href="/contacts" className="text-sm font-medium text-slate-500 hover:text-slate-900">
+      <Link href="/contacts" className="text-sm font-medium text-zinc-500 hover:text-zinc-300">
         ← Back to contacts
       </Link>
     </div>
