@@ -126,3 +126,65 @@ export function ProjectStatusBadge({ status }: { status: string }) {
     </Badge>
   );
 }
+
+const CONTRACT_STATUS_VARIANT: Record<string, BadgeVariant> = {
+  NOT_SENT: "default",
+  SENT: "blue",
+  SIGNED: "emerald",
+  EXPIRED: "red",
+};
+
+const CONTRACT_STATUS_LABEL: Record<string, string> = {
+  NOT_SENT: "Not sent",
+  SENT: "Sent",
+  SIGNED: "Signed",
+  EXPIRED: "Expired",
+};
+
+export function ContractStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={CONTRACT_STATUS_VARIANT[status] ?? "default"}>
+      {CONTRACT_STATUS_LABEL[status] ?? status}
+    </Badge>
+  );
+}
+
+const INVOICE_STATUS_VARIANT: Record<string, BadgeVariant> = {
+  DRAFT: "default",
+  SENT: "blue",
+  PAID: "emerald",
+  OVERDUE: "red",
+};
+
+const INVOICE_STATUS_LABEL: Record<string, string> = {
+  DRAFT: "Draft",
+  SENT: "Sent",
+  PAID: "Paid",
+  OVERDUE: "Overdue",
+};
+
+export function InvoiceStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={INVOICE_STATUS_VARIANT[status] ?? "default"}>
+      {INVOICE_STATUS_LABEL[status] ?? status}
+    </Badge>
+  );
+}
+
+export function PaymentStatusBadge({
+  status,
+}: {
+  status: "current" | "pending" | "overdue" | "none";
+}) {
+  const variant: BadgeVariant =
+    status === "overdue" ? "red" : status === "pending" ? "amber" : status === "current" ? "emerald" : "default";
+  const label =
+    status === "overdue"
+      ? "Overdue"
+      : status === "pending"
+        ? "Payment pending"
+        : status === "current"
+          ? "Current"
+          : "No invoices";
+  return <Badge variant={variant}>{label}</Badge>;
+}

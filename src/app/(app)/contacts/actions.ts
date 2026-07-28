@@ -3,13 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ContactStatus, DealStage, Priority } from "@prisma/client";
+import { ContactStatus, DealStage, Priority, ContractStatus } from "@prisma/client";
 
 export type ContactFormState = { error?: string };
 
 const STATUSES = Object.values(ContactStatus);
 const STAGES = Object.values(DealStage);
 const PRIORITIES = Object.values(Priority);
+const CONTRACT_STATUSES = Object.values(ContractStatus);
 
 function str(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -119,6 +120,16 @@ export async function updateContact(
   revalidatePath(`/contacts/${contactId}`);
   revalidatePath("/dashboard");
   return {};
+}
+
+export async function updateContractStatus(contactId: string, status: string) {
+  if (!CONTRACT_STATUSES.includes(status as ContractStatus)) return;
+
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: { contractStatus: status as ContractStatus },
+  });
+  revalidatePath(`/contacts/${contactId}`);
 }
 
 export async function deleteContact(contactId: string) {

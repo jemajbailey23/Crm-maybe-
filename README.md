@@ -35,6 +35,7 @@ This app deploys to **Vercel**, backed by a **Supabase** Postgres database.
    - `APP_URL` — your deployed URL (e.g. `https://your-app.vercel.app`), used to build links in emails
    - `GMAIL_USER` / `GMAIL_APP_PASSWORD` — optional, see [Password recovery](#password-recovery) below
    - `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` — optional, lets leads have file attachments (see `.env.example` for setup)
+   - `CREDENTIAL_ENCRYPTION_KEY` — required for the client Secure Credential Vault (`openssl rand -hex 32`); back this up somewhere safe, since losing it makes stored credentials unrecoverable
 4. **Deploy.** The build command (`prisma migrate deploy && next build`) automatically applies the database schema on every deploy using `DIRECT_URL` — no manual migration step needed.
 5. Visit the deployed URL and create your account on the first-run signup page.
 

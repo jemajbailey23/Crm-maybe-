@@ -66,6 +66,25 @@ enum Priority {
   HIGH
 }
 
+enum ContractStatus {
+  NOT_SENT
+  SENT
+  SIGNED
+  EXPIRED
+}
+
+enum BillingType {
+  ONE_TIME
+  MONTHLY
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+}
+
 model Contact {
   id        String        @id @default(cuid())
   firstName String
@@ -103,6 +122,13 @@ model Contact {
   desiredOutcome  String?
   competitors     String?
 
+  // Client workspace: contract + website information
+  contractStatus      ContractStatus @default(NOT_SENT)
+  domain              String?
+  hostingProvider     String?
+  analyticsAccount    String?
+  googleSearchConsole String?
+
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyId String?
 
@@ -112,6 +138,58 @@ model Contact {
   bookings    Booking[]
   attachments Attachment[]
   projects    Project[]
+  services    Service[]
+  invoices    Invoice[]
+  links       ImportantLink[]
+  credentials Credential[]
+}
+
+model Service {
+  id          String      @id @default(cuid())
+  name        String
+  billingType BillingType @default(ONE_TIME)
+  amount      Float?
+  createdAt   DateTime    @default(now())
+
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  description String
+  amount      Float
+  status      InvoiceStatus @default(DRAFT)
+  issuedDate  DateTime?
+  dueDate     DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String
+}
+
+model ImportantLink {
+  id        String   @id @default(cuid())
+  label     String
+  url       String
+  createdAt DateTime @default(now())
+
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String
+}
+
+model Credential {
+  id        String   @id @default(cuid())
+  label     String
+  username  String?
+  secret    String // encrypted (AES-256-GCM), never stored in plaintext
+  url       String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String
 }
 
 model Attachment {
