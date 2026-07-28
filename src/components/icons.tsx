@@ -48,6 +48,15 @@ export function TasksIcon({ className = base }: IconProps) {
   );
 }
 
+export function ProjectsIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path strokeLinecap="round" d="M3 9h18M8 13h4" />
+    </svg>
+  );
+}
+
 export function BookingIcon({ className = base }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>

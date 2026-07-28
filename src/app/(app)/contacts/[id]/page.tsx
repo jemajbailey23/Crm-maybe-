@@ -14,6 +14,7 @@ import {
   DealStageBadge,
   ActivityTypeBadge,
   PriorityBadge,
+  ProjectStatusBadge,
 } from "@/components/ui/badge";
 
 function formatDate(date: Date) {
@@ -53,6 +54,7 @@ export default async function ContactDetailPage({
       include: {
         company: true,
         deals: { orderBy: { createdAt: "desc" } },
+        projects: { orderBy: { createdAt: "desc" } },
         tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
         activities: { orderBy: { occurredAt: "desc" } },
         attachments: { orderBy: { createdAt: "desc" } },
@@ -157,6 +159,43 @@ export default async function ContactDetailPage({
       </section>
 
       <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-100">Projects</h2>
+          <Link
+            href={`/projects/new?contactId=${contact.id}`}
+            className="text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
+          >
+            + New project
+          </Link>
+        </div>
+        {contact.projects.length === 0 ? (
+          <p className="text-sm text-zinc-500">No projects for this client yet.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-800/60">
+            {contact.projects.map((project) => (
+              <li key={project.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="font-medium text-zinc-100 hover:text-indigo-400"
+                  >
+                    {project.name}
+                  </Link>
+                  <div className="mt-1 h-1.5 w-32 overflow-hidden rounded-full bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-linear-to-r from-indigo-500 to-violet-500"
+                      style={{ width: `${project.progress}%` }}
+                    />
+                  </div>
+                </div>
+                <ProjectStatusBadge status={project.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <h2 className="mb-4 text-sm font-semibold text-zinc-100">Tasks</h2>
         <div className="mb-4">
           <TaskQuickForm contactId={contact.id} />
@@ -247,7 +286,7 @@ export default async function ContactDetailPage({
       <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <h2 className="mb-4 text-sm font-semibold text-zinc-100">Files</h2>
         <div className="mb-4">
-          <AttachmentUploadForm contactId={contact.id} />
+          <AttachmentUploadForm owner={{ contactId: contact.id }} />
         </div>
         {contact.attachments.length === 0 ? (
           <p className="text-sm text-zinc-500">No files uploaded yet.</p>

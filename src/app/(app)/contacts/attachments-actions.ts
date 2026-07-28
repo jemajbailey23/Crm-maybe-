@@ -6,9 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { uploadFile, deleteFile } from "@/lib/storage";
 
 export type AttachmentFormState = { error?: string };
+export type AttachmentOwner = { contactId: string } | { projectId: string };
 
 export async function uploadAttachment(
-  contactId: string,
+  owner: AttachmentOwner,
   _prevState: AttachmentFormState,
   formData: FormData
 ): Promise<AttachmentFormState> {
@@ -17,7 +18,8 @@ export async function uploadAttachment(
     return { error: "Choose a file to upload." };
   }
 
-  const path = `${contactId}/${randomUUID()}-${file.name}`;
+  const ownerId = "contactId" in owner ? owner.contactId : owner.projectId;
+  const path = `${ownerId}/${randomUUID()}-${file.name}`;
 
   let url: string;
   try {
@@ -28,7 +30,7 @@ export async function uploadAttachment(
 
   await prisma.attachment.create({
     data: {
-      contactId,
+      ...owner,
       filename: file.name,
       path,
       url,
@@ -37,7 +39,8 @@ export async function uploadAttachment(
     },
   });
 
-  revalidatePath(`/contacts/${contactId}`);
+  if ("contactId" in owner) revalidatePath(`/contacts/${owner.contactId}`);
+  else revalidatePath(`/projects/${owner.projectId}`);
   return {};
 }
 
@@ -46,5 +49,6 @@ export async function deleteAttachment(attachmentId: string) {
     where: { id: attachmentId },
   });
   await deleteFile(attachment.path).catch(() => {});
-  revalidatePath(`/contacts/${attachment.contactId}`);
+  if (attachment.contactId) revalidatePath(`/contacts/${attachment.contactId}`);
+  if (attachment.projectId) revalidatePath(`/projects/${attachment.projectId}`);
 }

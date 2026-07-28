@@ -71,6 +71,8 @@ export default async function DashboardPage() {
     totalClients,
     allDeals,
     overdueTaskCount,
+    projectsInProgress,
+    activeProjects,
   ] = await Promise.all([
     prisma.contact.count({
       where: { status: "LEAD", createdAt: { gte: startOfToday, lte: endOfToday } },
@@ -109,6 +111,8 @@ export default async function DashboardPage() {
     prisma.task.count({
       where: { status: "OPEN", dueDate: { lt: startOfToday } },
     }),
+    prisma.project.count({ where: { status: "IN_PROGRESS" } }),
+    prisma.project.count({ where: { status: { not: "COMPLETED" } } }),
   ]);
 
   const wonDeals = allDeals.filter((d) => d.stage === "WON");
@@ -126,7 +130,6 @@ export default async function DashboardPage() {
     .filter((d) => !d.isRecurring && d.wonAt && d.wonAt >= startOfMonth)
     .reduce((sum, d) => sum + (d.value ?? 0), 0);
   const revenueThisMonth = mrr + oneTimeRevenue;
-  const activeProjects = wonDeals.length;
 
   const stageData = STAGES.map((s) => ({
     label: s.label,
@@ -181,7 +184,7 @@ export default async function DashboardPage() {
           <StatCard label="Calls scheduled" value={String(callsScheduledToday)} />
           <StatCard label="Meetings scheduled" value={String(meetingsScheduledToday)} />
           <StatCard label="Open tasks" value={String(openTaskCount)} />
-          <StatCard label="Projects in progress" value={String(activeProjects)} />
+          <StatCard label="Projects in progress" value={String(projectsInProgress)} />
         </div>
       </div>
 

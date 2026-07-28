@@ -8,9 +8,11 @@ const initialState: ActivityFormState = {};
 export function ActivityQuickForm({
   contactId,
   dealId,
+  projectId,
 }: {
   contactId?: string;
   dealId?: string;
+  projectId?: string;
 }) {
   const [state, formAction, pending] = useActionState(
     createActivity,
@@ -21,6 +23,7 @@ export function ActivityQuickForm({
     <form action={formAction} className="space-y-2">
       {contactId && <input type="hidden" name="contactId" value={contactId} />}
       {dealId && <input type="hidden" name="dealId" value={dealId} />}
+      {projectId && <input type="hidden" name="projectId" value={projectId} />}
       <div className="flex gap-2">
         <select
           name="type"

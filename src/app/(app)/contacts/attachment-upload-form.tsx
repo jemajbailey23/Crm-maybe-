@@ -1,12 +1,16 @@
 "use client";
 
 import { useActionState, useRef } from "react";
-import { uploadAttachment, type AttachmentFormState } from "./attachments-actions";
+import {
+  uploadAttachment,
+  type AttachmentFormState,
+  type AttachmentOwner,
+} from "./attachments-actions";
 
 const initialState: AttachmentFormState = {};
 
-export function AttachmentUploadForm({ contactId }: { contactId: string }) {
-  const action = uploadAttachment.bind(null, contactId);
+export function AttachmentUploadForm({ owner }: { owner: AttachmentOwner }) {
+  const action = uploadAttachment.bind(null, owner);
   const [state, formAction, pending] = useActionState(action, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 

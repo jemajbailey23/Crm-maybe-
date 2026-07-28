@@ -17,6 +17,7 @@ export async function createActivity(
   const typeRaw = String(formData.get("type") ?? "").trim();
   const contactId = String(formData.get("contactId") ?? "").trim();
   const dealId = String(formData.get("dealId") ?? "").trim();
+  const projectId = String(formData.get("projectId") ?? "").trim();
 
   if (!summary) {
     return { error: "Activity summary is required." };
@@ -34,12 +35,14 @@ export async function createActivity(
       type,
       contactId: contactId || null,
       dealId: dealId || null,
+      projectId: projectId || null,
       createdById: user?.id ?? null,
     },
   });
 
   if (contactId) revalidatePath(`/contacts/${contactId}`);
   if (dealId) revalidatePath(`/deals/${dealId}`);
+  if (projectId) revalidatePath(`/projects/${projectId}`);
   revalidatePath("/dashboard");
   return {};
 }
@@ -50,5 +53,6 @@ export async function deleteActivity(activityId: string) {
   });
   if (activity.contactId) revalidatePath(`/contacts/${activity.contactId}`);
   if (activity.dealId) revalidatePath(`/deals/${activity.dealId}`);
+  if (activity.projectId) revalidatePath(`/projects/${activity.projectId}`);
   revalidatePath("/dashboard");
 }

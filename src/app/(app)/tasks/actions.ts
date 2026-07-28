@@ -15,6 +15,7 @@ export async function createTask(
   const notes = String(formData.get("notes") ?? "").trim();
   const contactId = String(formData.get("contactId") ?? "").trim();
   const dealId = String(formData.get("dealId") ?? "").trim();
+  const projectId = String(formData.get("projectId") ?? "").trim();
   const redirectTo = String(formData.get("redirectTo") ?? "").trim();
 
   if (!title) {
@@ -30,6 +31,7 @@ export async function createTask(
       notes: notes || null,
       contactId: contactId || null,
       dealId: dealId || null,
+      projectId: projectId || null,
       assignedToId: user?.id ?? null,
     },
   });
@@ -38,6 +40,7 @@ export async function createTask(
   revalidatePath("/dashboard");
   if (contactId) revalidatePath(`/contacts/${contactId}`);
   if (dealId) revalidatePath(`/deals/${dealId}`);
+  if (projectId) revalidatePath(`/projects/${projectId}`);
   if (redirectTo) revalidatePath(redirectTo);
   return {};
 }
@@ -55,6 +58,7 @@ export async function toggleTaskStatus(
   revalidatePath("/dashboard");
   if (task.contactId) revalidatePath(`/contacts/${task.contactId}`);
   if (task.dealId) revalidatePath(`/deals/${task.dealId}`);
+  if (task.projectId) revalidatePath(`/projects/${task.projectId}`);
 }
 
 export async function deleteTask(taskId: string) {
@@ -63,4 +67,5 @@ export async function deleteTask(taskId: string) {
   revalidatePath("/dashboard");
   if (task.contactId) revalidatePath(`/contacts/${task.contactId}`);
   if (task.dealId) revalidatePath(`/deals/${task.dealId}`);
+  if (task.projectId) revalidatePath(`/projects/${task.projectId}`);
 }

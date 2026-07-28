@@ -111,6 +111,7 @@ model Contact {
   activities  Activity[]
   bookings    Booking[]
   attachments Attachment[]
+  projects    Project[]
 }
 
 model Attachment {
@@ -122,8 +123,59 @@ model Attachment {
   mimeType  String?
   createdAt DateTime @default(now())
 
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String?
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+}
+
+enum ProjectStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+}
+
+model Project {
+  id        String        @id @default(cuid())
+  name      String // e.g. Website, SEO, AI Automation, Google Business Profile, CRM Setup, Branding
+  status    ProjectStatus @default(NOT_STARTED)
+  progress  Int           @default(0) // 0-100
+  dueDate   DateTime?
+  priority  Priority      @default(MEDIUM)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String
+
+  tasks       Task[]
+  checklist   ChecklistItem[]
+  attachments Attachment[]
+  activities  Activity[]
+  timeEntries TimeEntry[]
+}
+
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  label     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  minutes     Int
+  description String?
+  occurredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
 }
 
 model Booking {
@@ -190,6 +242,9 @@ model Task {
 
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
   dealId String?
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
 }
 
 enum ActivityType {
@@ -213,6 +268,9 @@ model Activity {
 
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
   dealId String?
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
 
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdById String?

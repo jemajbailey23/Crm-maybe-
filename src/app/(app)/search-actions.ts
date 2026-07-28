@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export type SearchResult = {
   id: string;
-  type: "contact" | "company" | "deal" | "task";
+  type: "contact" | "company" | "deal" | "task" | "project";
   title: string;
   subtitle?: string;
   href: string;
@@ -14,13 +14,14 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
   const q = query.trim();
   if (!q) return [];
 
-  const [contacts, companies, deals, tasks] = await Promise.all([
+  const [contacts, companies, deals, tasks, projects] = await Promise.all([
     prisma.contact.findMany({
       where: {
         OR: [
           { firstName: { contains: q, mode: "insensitive" } },
           { lastName: { contains: q, mode: "insensitive" } },
           { email: { contains: q, mode: "insensitive" } },
+          { businessName: { contains: q, mode: "insensitive" } },
         ],
       },
       take: 5,
@@ -35,6 +36,11 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
     }),
     prisma.task.findMany({
       where: { title: { contains: q, mode: "insensitive" } },
+      take: 5,
+    }),
+    prisma.project.findMany({
+      where: { name: { contains: q, mode: "insensitive" } },
+      include: { contact: true },
       take: 5,
     }),
   ]);
@@ -67,6 +73,13 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       title: t.title,
       subtitle: t.status === "DONE" ? "Done" : "Open",
       href: `/tasks`,
+    })),
+    ...projects.map((p) => ({
+      id: p.id,
+      type: "project" as const,
+      title: p.name,
+      subtitle: p.contact.businessName || `${p.contact.firstName} ${p.contact.lastName}`,
+      href: `/projects/${p.id}`,
     })),
   ];
 }

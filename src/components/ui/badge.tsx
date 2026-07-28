@@ -104,3 +104,25 @@ export function PriorityBadge({ priority }: { priority: string }) {
     </Badge>
   );
 }
+
+const PROJECT_STATUS_VARIANT: Record<string, BadgeVariant> = {
+  NOT_STARTED: "default",
+  IN_PROGRESS: "blue",
+  ON_HOLD: "amber",
+  COMPLETED: "emerald",
+};
+
+const PROJECT_STATUS_LABEL: Record<string, string> = {
+  NOT_STARTED: "Not started",
+  IN_PROGRESS: "In progress",
+  ON_HOLD: "On hold",
+  COMPLETED: "Completed",
+};
+
+export function ProjectStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={PROJECT_STATUS_VARIANT[status] ?? "default"}>
+      {PROJECT_STATUS_LABEL[status] ?? status}
+    </Badge>
+  );
+}
