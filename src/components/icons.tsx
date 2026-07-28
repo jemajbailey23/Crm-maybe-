@@ -57,6 +57,15 @@ export function ProjectsIcon({ className = base }: IconProps) {
   );
 }
 
+export function FinancialsIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>
+      <path strokeLinecap="round" d="M3 20h18" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 20v-6M12 20V8M17 20v-10" />
+    </svg>
+  );
+}
+
 export function BookingIcon({ className = base }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className={className}>

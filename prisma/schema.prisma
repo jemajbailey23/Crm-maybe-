@@ -27,6 +27,10 @@ model User {
   bookingSlotMinutes Int    @default(30)
   bookingTimezone    String @default("America/New_York")
 
+  // Used to estimate profit on the financial dashboard (revenue * margin).
+  // No expense tracking exists yet, so this is a manually-set assumption.
+  profitMarginPercent Int @default(70)
+
   tasks               Task[]
   activities          Activity[]
   passwordResetTokens PasswordResetToken[]
