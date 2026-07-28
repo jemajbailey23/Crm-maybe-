@@ -5,6 +5,8 @@ import { toggleTaskStatus } from "../tasks/actions";
 import { StatCard } from "@/components/ui/stat-card";
 import { BarChart } from "@/components/ui/bar-chart";
 import { ActivityTypeBadge, PriorityBadge } from "@/components/ui/badge";
+import { getNextBestActions } from "./next-best-actions";
+import { NextBestActionsPanel } from "./next-best-actions-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +76,7 @@ export default async function DashboardPage() {
     overdueTaskCount,
     projectsInProgress,
     activeProjects,
+    nextBestActions,
   ] = await Promise.all([
     prisma.contact.count({
       where: { status: "LEAD", createdAt: { gte: startOfToday, lte: endOfToday } },
@@ -114,6 +117,7 @@ export default async function DashboardPage() {
     }),
     prisma.project.count({ where: { status: "IN_PROGRESS" } }),
     prisma.project.count({ where: { status: { not: "COMPLETED" } } }),
+    getNextBestActions(),
   ]);
 
   const wonDeals = allDeals.filter((d) => d.stage === "WON");
@@ -161,6 +165,8 @@ export default async function DashboardPage() {
           </Link>
         )}
       </div>
+
+      <NextBestActionsPanel actions={nextBestActions} />
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-zinc-100">Quick actions</h2>

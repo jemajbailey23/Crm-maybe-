@@ -61,10 +61,13 @@ function derivePaymentStatus(
 
 export default async function ContactDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab: initialTab } = await searchParams;
 
   const [contact, companies] = await Promise.all([
     prisma.contact.findUnique({
@@ -152,6 +155,7 @@ export default async function ContactDetailPage({
       </div>
 
       <ClientWorkspaceTabs
+        initialTab={initialTab}
         tabs={[
           {
             id: "overview",

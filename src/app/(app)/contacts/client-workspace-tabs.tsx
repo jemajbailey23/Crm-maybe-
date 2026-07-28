@@ -4,10 +4,14 @@ import { useState } from "react";
 
 export function ClientWorkspaceTabs({
   tabs,
+  initialTab,
 }: {
   tabs: { id: string; label: string; badge?: number; content: React.ReactNode }[];
+  initialTab?: string;
 }) {
-  const [active, setActive] = useState(tabs[0]?.id);
+  const [active, setActive] = useState(
+    initialTab && tabs.some((t) => t.id === initialTab) ? initialTab : tabs[0]?.id
+  );
 
   return (
     <div>
