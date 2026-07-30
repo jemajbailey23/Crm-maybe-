@@ -8,22 +8,26 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; status?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, status } = await searchParams;
+  const statusFilter = status === "LEAD" || status === "CLIENT" ? status : undefined;
 
   const contacts = await prisma.contact.findMany({
-    where: q
-      ? {
-          OR: [
-            { firstName: { contains: q, mode: "insensitive" } },
-            { lastName: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q, mode: "insensitive" } },
-            { company: { name: { contains: q, mode: "insensitive" } } },
-          ],
-        }
-      : undefined,
+    where: {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(q
+        ? {
+            OR: [
+              { firstName: { contains: q, mode: "insensitive" } },
+              { lastName: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+              { phone: { contains: q, mode: "insensitive" } },
+              { company: { name: { contains: q, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: { company: true },
   });
@@ -36,7 +40,11 @@ export default async function ContactsPage({
             Contacts
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Everyone you&apos;re doing business with.
+            {statusFilter === "LEAD"
+              ? "Leads only."
+              : statusFilter === "CLIENT"
+                ? "Clients only."
+                : "Everyone you're doing business with."}
           </p>
         </div>
         <div className="flex gap-2">

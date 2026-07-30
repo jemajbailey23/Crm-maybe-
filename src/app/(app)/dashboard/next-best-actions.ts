@@ -3,10 +3,10 @@ import {
   differenceInCalendarDays,
   differenceInHours,
   addDays,
+  subDays,
   isToday,
-  startOfDay,
-  endOfDay,
 } from "date-fns";
+import { startOfDayInZone, endOfDayInZone } from "@/lib/timezone";
 
 export type NextBestActionSeverity = "urgent" | "high" | "medium";
 
@@ -30,6 +30,8 @@ const CONTACT_ACTIVITY_TYPES = [
 ] as const;
 
 const STALE_CLIENT_DAYS = 10;
+const STALE_DEAL_DAYS = 10;
+const AUTOMATION_FAILURE_WINDOW_DAYS = 3;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -49,8 +51,13 @@ function severityFor(score: number): NextBestActionSeverity {
   return "medium";
 }
 
-export async function getNextBestActions(limit = 8): Promise<NextBestAction[]> {
+export async function getNextBestActions(
+  timezone: string,
+  limit = 8
+): Promise<NextBestAction[]> {
   const now = new Date();
+  const startOfToday = startOfDayInZone(now, timezone);
+  const endOfToday = endOfDayInZone(now, timezone);
 
   const [
     overdueFollowUps,
@@ -60,6 +67,9 @@ export async function getNextBestActions(limit = 8): Promise<NextBestAction[]> {
     lastActivityByContact,
     onHoldProjects,
     dueTasks,
+    openDealsForStaleness,
+    lastActivityByDeal,
+    failedAutomationRuns,
   ] = await Promise.all([
     prisma.contact.findMany({
       where: { nextFollowUpAt: { lt: now } },
@@ -83,7 +93,7 @@ export async function getNextBestActions(limit = 8): Promise<NextBestAction[]> {
     }),
     prisma.booking.findMany({
       where: { startsAt: { gte: now, lte: addDays(now, 1) } },
-      include: { contact: { select: { id: true } } },
+      select: { id: true, startsAt: true, name: true, notes: true, contact: { select: { id: true } } },
     }),
     prisma.contact.findMany({
       where: { status: "CLIENT" },
@@ -107,10 +117,31 @@ export async function getNextBestActions(limit = 8): Promise<NextBestAction[]> {
         status: "OPEN",
         OR: [
           { dueDate: { lt: now } },
-          { dueDate: { gte: startOfDay(now), lte: endOfDay(now) }, priority: "HIGH" },
+          { dueDate: { gte: startOfToday, lte: endOfToday }, priority: "HIGH" },
         ],
       },
       include: { contact: true, project: true },
+    }),
+    prisma.deal.findMany({
+      where: { stage: { notIn: ["WON", "LOST"] } },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        contact: { select: { firstName: true, lastName: true, businessName: true } },
+        company: { select: { name: true } },
+      },
+    }),
+    prisma.activity.groupBy({
+      by: ["dealId"],
+      where: { dealId: { not: null } },
+      _max: { occurredAt: true },
+    }),
+    prisma.automationRun.findMany({
+      where: { status: "FAILED", createdAt: { gte: subDays(now, AUTOMATION_FAILURE_WINDOW_DAYS) } },
+      include: { rule: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
     }),
   ]);
 
@@ -143,11 +174,14 @@ export async function getNextBestActions(limit = 8): Promise<NextBestAction[]> {
   const bookingActions: NextBestAction[] = upcomingBookings.map((b) => {
     const hoursUntil = Math.max(0, differenceInHours(b.startsAt, now));
     const dayLabel = isToday(b.startsAt) ? "today" : "tomorrow";
-    const score = Math.max(40, 65 - hoursUntil / 2);
+    const hasNoNotes = !b.notes?.trim();
+    const score = Math.max(40, 65 - hoursUntil / 2) + (hasNoNotes && hoursUntil <= 24 ? 20 : 0);
     return {
       id: `booking-${b.id}`,
-      category: "Call",
-      message: `Discovery call ${dayLabel} with ${b.name}.`,
+      category: hasNoNotes ? "Meeting prep" : "Call",
+      message: hasNoNotes
+        ? `Discovery call ${dayLabel} with ${b.name} has no prep notes yet.`
+        : `Discovery call ${dayLabel} with ${b.name}.`,
       href: b.contact ? `/contacts/${b.contact.id}` : "/booking",
       severity: severityFor(score),
       score,
@@ -190,6 +224,43 @@ export async function getNextBestActions(limit = 8): Promise<NextBestAction[]> {
     };
   });
 
+  const lastActivityByDealMap = new Map(
+    lastActivityByDeal
+      .filter((r) => r.dealId)
+      .map((r) => [r.dealId as string, r._max.occurredAt])
+  );
+  const dealStaleActions: NextBestAction[] = openDealsForStaleness
+    .map((d) => {
+      const last = lastActivityByDealMap.get(d.id) ?? d.createdAt;
+      const daysSince = differenceInCalendarDays(now, last);
+      return { d, daysSince };
+    })
+    .filter(({ daysSince }) => daysSince >= STALE_DEAL_DAYS)
+    .map(({ d, daysSince }) => {
+      const score = 45 + daysSince * 5;
+      const who = d.contact ? contactName(d.contact) : d.company?.name;
+      return {
+        id: `deal-stale-${d.id}`,
+        category: "Deal",
+        message: `${d.title}${who ? ` (${who})` : ""} has had no activity in ${daysSince} days.`,
+        href: `/deals/${d.id}`,
+        severity: severityFor(score),
+        score,
+      };
+    });
+
+  const automationFailedActions: NextBestAction[] = failedAutomationRuns.map((run) => {
+    const score = 65;
+    return {
+      id: `automation-failed-${run.id}`,
+      category: "Automation",
+      message: `Automation "${run.rule.name}" failed: ${run.error ?? "unknown error"}.`,
+      href: "/automations",
+      severity: severityFor(score),
+      score,
+    };
+  });
+
   const taskActions: NextBestAction[] = dueTasks.map((t) => {
     const overdue = !!t.dueDate && t.dueDate < now;
     const daysOverdue = overdue ? Math.max(0, differenceInCalendarDays(now, t.dueDate!)) : 0;
@@ -212,6 +283,8 @@ export async function getNextBestActions(limit = 8): Promise<NextBestAction[]> {
     ...followUpActions,
     ...taskActions,
     ...staleActions,
+    ...dealStaleActions,
+    ...automationFailedActions,
     ...bookingActions,
     ...projectActions,
   ]

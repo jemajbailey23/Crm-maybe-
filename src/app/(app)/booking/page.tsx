@@ -5,6 +5,7 @@ import { AvailabilityForm } from "./availability-form";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { deleteBooking } from "./actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { AvailabilityRule } from "@/lib/availability";
 
 function formatDateTime(date: Date, timezone: string) {
@@ -68,7 +69,7 @@ export default async function BookingSettingsPage() {
           Upcoming calls
         </h2>
         {upcomingBookings.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nothing booked yet.</p>
+          <EmptyState message="Nothing booked yet. Share your booking link above to get your first one." />
         ) : (
           <ul className="divide-y divide-zinc-800/60">
             {upcomingBookings.map((booking) => (

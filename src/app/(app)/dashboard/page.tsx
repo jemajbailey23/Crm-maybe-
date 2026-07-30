@@ -1,52 +1,23 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { toggleTaskStatus } from "../tasks/actions";
-import { StatCard } from "@/components/ui/stat-card";
-import { BarChart } from "@/components/ui/bar-chart";
-import { ActivityTypeBadge, PriorityBadge } from "@/components/ui/badge";
 import { getNextBestActions } from "./next-best-actions";
 import { NextBestActionsPanel } from "./next-best-actions-panel";
 import { checkOverdueTasks } from "@/lib/automations";
 import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
+import { startOfDayInZone, endOfDayInZone, startOfMonthInZone } from "@/lib/timezone";
+import { getSalesPipelineStats } from "./sales-pipeline";
+import { getRevenueSnapshot } from "./revenue-snapshot";
+import { getDeliverySnapshot } from "./delivery-snapshot";
+import { QuickActions } from "./quick-actions";
+import { TodaysOverview } from "./todays-overview";
+import { SalesPipelinePanel } from "./sales-pipeline-panel";
+import { RevenueSnapshotPanel } from "./revenue-snapshot-panel";
+import { DeliverySnapshotPanel } from "./delivery-snapshot-panel";
+import { UpcomingMeetingsPanel } from "./upcoming-meetings-panel";
+import { RecentActivityPanel } from "./recent-activity-panel";
 
 export const dynamic = "force-dynamic";
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-function formatDateTime(date: Date, timezone: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: timezone,
-    timeZoneName: "short",
-  }).format(date);
-}
-
-const QUICK_ACTIONS = [
-  { label: "Add Lead", href: "/contacts/new?status=LEAD" },
-  { label: "Add Client", href: "/contacts/new?status=CLIENT" },
-  { label: "Create Proposal", href: "/deals/new?stage=PROPOSAL" },
-  { label: "Start Audit", href: "/deals/new?title=Growth+Audit" },
-  { label: "Create Invoice", href: "/deals?stage=WON" },
-  { label: "Schedule Meeting", href: "/book" },
-];
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -54,9 +25,9 @@ export default async function DashboardPage() {
   const STAGES = stageOptions(await getStageLabels());
 
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfToday = startOfDayInZone(now, user.bookingTimezone);
+  const endOfToday = endOfDayInZone(now, user.bookingTimezone);
+  const startOfMonth = startOfMonthInZone(now, user.bookingTimezone);
 
   const [
     newLeadsToday,
@@ -67,12 +38,13 @@ export default async function DashboardPage() {
     todaysTasks,
     recentActivities,
     upcomingMeetings,
-    totalClients,
     allDeals,
     overdueTaskCount,
-    projectsInProgress,
-    activeProjects,
+    projectsOnHold,
     nextBestActions,
+    salesPipeline,
+    revenueSnapshot,
+    deliverySnapshot,
   ] = await Promise.all([
     prisma.contact.count({
       where: { status: "LEAD", createdAt: { gte: startOfToday, lte: endOfToday } },
@@ -96,7 +68,11 @@ export default async function DashboardPage() {
     prisma.activity.findMany({
       orderBy: { occurredAt: "desc" },
       take: 5,
-      include: { contact: true, deal: true },
+      include: {
+        contact: { include: { company: true } },
+        deal: { include: { company: true } },
+        project: true,
+      },
     }),
     prisma.booking.findMany({
       where: { startsAt: { gte: now } },
@@ -104,16 +80,17 @@ export default async function DashboardPage() {
       take: 5,
       include: { contact: true },
     }),
-    prisma.contact.count({ where: { status: "CLIENT" } }),
     prisma.deal.findMany({
-      select: { stage: true, value: true, isRecurring: true, wonAt: true },
+      select: { stage: true, value: true },
     }),
     prisma.task.count({
       where: { status: "OPEN", dueDate: { lt: startOfToday } },
     }),
-    prisma.project.count({ where: { status: "IN_PROGRESS" } }),
-    prisma.project.count({ where: { status: { not: "COMPLETED" } } }),
-    getNextBestActions(),
+    prisma.project.count({ where: { status: "ON_HOLD" } }),
+    getNextBestActions(user.bookingTimezone),
+    getSalesPipelineStats(now),
+    getRevenueSnapshot(now, startOfMonth),
+    getDeliverySnapshot(now),
   ]);
 
   const wonDeals = allDeals.filter((d) => d.stage === "WON");
@@ -123,14 +100,6 @@ export default async function DashboardPage() {
     wonDeals.length > 0
       ? wonDeals.reduce((sum, d) => sum + (d.value ?? 0), 0) / wonDeals.length
       : null;
-
-  const mrr = wonDeals
-    .filter((d) => d.isRecurring)
-    .reduce((sum, d) => sum + (d.value ?? 0), 0);
-  const oneTimeRevenue = wonDeals
-    .filter((d) => !d.isRecurring && d.wonAt && d.wonAt >= startOfMonth)
-    .reduce((sum, d) => sum + (d.value ?? 0), 0);
-  const revenueThisMonth = mrr + oneTimeRevenue;
 
   const stageData = STAGES.map((s) => ({
     label: s.label,
@@ -150,7 +119,7 @@ export default async function DashboardPage() {
         </div>
         {overdueTaskCount > 0 && (
           <Link
-            href="/tasks"
+            href="/tasks?filter=overdue"
             className="animate-fade-in flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20"
           >
             <span className="relative flex h-2 w-2">
@@ -164,208 +133,58 @@ export default async function DashboardPage() {
 
       <NextBestActionsPanel actions={nextBestActions} />
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-100">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {QUICK_ACTIONS.map((action) => (
-            <Link
-              key={action.label}
-              href={action.href}
-              className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-3 text-center text-sm font-medium text-zinc-200 transition-colors hover:border-indigo-500/40 hover:bg-zinc-900 hover:text-indigo-300"
-            >
-              {action.label}
-            </Link>
-          ))}
-        </div>
-      </div>
+      <QuickActions />
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-100">Today&apos;s metrics</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <StatCard label="New leads" value={String(newLeadsToday)} />
-          <StatCard label="Follow-ups due" value={String(followUpsDue)} />
-          <StatCard label="Calls scheduled" value={String(callsScheduledToday)} />
-          <StatCard label="Meetings scheduled" value={String(meetingsScheduledToday)} />
-          <StatCard label="Open tasks" value={String(openTaskCount)} />
-          <StatCard label="Projects in progress" value={String(projectsInProgress)} />
-        </div>
-      </div>
+      <TodaysOverview
+        newLeadsToday={newLeadsToday}
+        followUpsDue={followUpsDue}
+        meetingsScheduledToday={meetingsScheduledToday}
+        openTaskCount={openTaskCount}
+        overdueTaskCount={overdueTaskCount}
+        callsScheduledToday={callsScheduledToday}
+        projectsOnHold={projectsOnHold}
+        todaysTasks={todaysTasks}
+        startOfToday={startOfToday}
+      />
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-zinc-100">Business metrics</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Monthly recurring revenue" value={formatCurrency(mrr)} />
-          <StatCard label="One-time revenue" value={formatCurrency(oneTimeRevenue)} sub="This month" />
-          <StatCard label="Revenue this month" value={formatCurrency(revenueThisMonth)} />
-          <StatCard label="Total clients" value={String(totalClients)} />
-          <StatCard label="Active projects" value={String(activeProjects)} />
-          <StatCard
-            label="Close rate"
-            value={closeRate === null ? "—" : `${closeRate}%`}
-            sub={closedDeals.length > 0 ? `${wonDeals.length} of ${closedDeals.length} closed` : "No closed deals yet"}
-          />
-          <StatCard
-            label="Average deal size"
-            value={avgDealSize === null ? "—" : formatCurrency(avgDealSize)}
-          />
-        </div>
-      </div>
+      <SalesPipelinePanel
+        stageData={stageData}
+        hasDeals={allDeals.length > 0}
+        totalPipelineValue={salesPipeline.totalPipelineValue}
+        weightedPipelineValue={salesPipeline.weightedPipelineValue}
+        averageDealAgeDays={salesPipeline.averageDealAgeDays}
+        dealsAtRisk={salesPipeline.dealsAtRisk}
+        closeRate={closeRate}
+        closedDealsCount={closedDeals.length}
+        wonDealsCount={wonDeals.length}
+        avgDealSize={avgDealSize}
+      />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-100">
-              Pipeline by stage
-            </h2>
-            <Link
-              href="/deals"
-              className="text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
-            >
-              View pipeline →
-            </Link>
-          </div>
-          {allDeals.length === 0 ? (
-            <p className="text-sm text-zinc-500">No deals yet.</p>
-          ) : (
-            <BarChart data={stageData} />
-          )}
-        </div>
+      <RevenueSnapshotPanel
+        mrr={revenueSnapshot.mrr}
+        oneTimeThisMonth={revenueSnapshot.oneTimeThisMonth}
+        revenueThisMonth={revenueSnapshot.revenueThisMonth}
+        outstandingValue={revenueSnapshot.outstandingValue}
+        outstandingCount={revenueSnapshot.outstandingCount}
+        overdueValue={revenueSnapshot.overdueValue}
+        overdueCount={revenueSnapshot.overdueCount}
+        totalClients={revenueSnapshot.totalClients}
+        goalTarget={revenueSnapshot.goalTarget}
+        goalProgressPercent={revenueSnapshot.goalProgressPercent}
+      />
 
-        <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-100">
-              Upcoming meetings
-              {upcomingMeetings.length > 0 && (
-                <span className="ml-2 rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-400">
-                  {upcomingMeetings.length}
-                </span>
-              )}
-            </h2>
-            <Link
-              href="/booking"
-              className="text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
-            >
-              Manage →
-            </Link>
-          </div>
-          {upcomingMeetings.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nothing booked yet.</p>
-          ) : (
-            <ul className="divide-y divide-zinc-800/60">
-              {upcomingMeetings.map((meeting) => (
-                <li key={meeting.id} className="py-2.5 text-sm">
-                  <p className="font-medium text-zinc-200">
-                    {formatDateTime(meeting.startsAt, user.bookingTimezone)}
-                  </p>
-                  <p className="truncate text-xs text-zinc-500">
-                    {meeting.contact ? (
-                      <Link
-                        href={`/contacts/${meeting.contact.id}`}
-                        className="hover:text-indigo-400"
-                      >
-                        {meeting.name}
-                      </Link>
-                    ) : (
-                      meeting.name
-                    )}{" "}
-                    · {meeting.email}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+      <DeliverySnapshotPanel
+        activeProjects={deliverySnapshot.activeProjects}
+        projectsInProgress={deliverySnapshot.projectsInProgress}
+        projectsOnHold={deliverySnapshot.projectsOnHold}
+        atRiskProjects={deliverySnapshot.atRiskProjects}
+        overdueProjectTasks={deliverySnapshot.overdueProjectTasks}
+        upcomingDeadlines={deliverySnapshot.upcomingDeadlines}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-100">
-              Recent activity
-            </h2>
-            <Link
-              href="/contacts"
-              className="text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
-            >
-              View contacts →
-            </Link>
-          </div>
-          {recentActivities.length === 0 ? (
-            <p className="text-sm text-zinc-500">No activity logged yet.</p>
-          ) : (
-            <ul className="divide-y divide-zinc-800/60">
-              {recentActivities.map((activity) => (
-                <li key={activity.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                  <div className="min-w-0">
-                    <p className="truncate text-zinc-200">{activity.summary}</p>
-                    <p className="truncate text-xs text-zinc-500">
-                      {activity.contact && `${activity.contact.firstName} ${activity.contact.lastName}`}
-                      {activity.deal && ` · ${activity.deal.title}`}
-                      {" · "}
-                      {formatDate(activity.occurredAt)}
-                    </p>
-                  </div>
-                  <ActivityTypeBadge type={activity.type} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-100">
-              Today&apos;s tasks
-              {todaysTasks.length > 0 && (
-                <span className="ml-2 rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-400">
-                  {todaysTasks.length}
-                </span>
-              )}
-            </h2>
-            <Link
-              href="/tasks"
-              className="text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
-            >
-              View all →
-            </Link>
-          </div>
-          {todaysTasks.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nothing due today. Nice.</p>
-          ) : (
-            <ul className="divide-y divide-zinc-800/60">
-              {todaysTasks.map((task) => (
-                <li key={task.id} className="flex items-center gap-2.5 py-2.5 text-sm">
-                  <form action={toggleTaskStatus.bind(null, task.id, task.status)}>
-                    <button
-                      type="submit"
-                      className="h-4 w-4 shrink-0 rounded border border-zinc-700 bg-zinc-900 transition-colors hover:border-zinc-600"
-                      aria-label="Complete task"
-                    />
-                  </form>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <Link
-                        href={`/tasks/${task.id}`}
-                        className="truncate font-medium text-zinc-200 hover:text-indigo-400"
-                      >
-                        {task.title}
-                      </Link>
-                      <PriorityBadge priority={task.priority} />
-                    </div>
-                    <p className="truncate text-xs text-zinc-500">
-                      {task.dueDate && task.dueDate < startOfToday
-                        ? `Overdue since ${formatDate(task.dueDate)}`
-                        : "Due today"}
-                      {task.contact && ` · ${task.contact.firstName} ${task.contact.lastName}`}
-                      {task.deal && ` · ${task.deal.title}`}
-                      {task.project && ` · ${task.project.name}`}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <UpcomingMeetingsPanel meetings={upcomingMeetings} timezone={user.bookingTimezone} />
+        <RecentActivityPanel activities={recentActivities} />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { NextBestAction, NextBestActionSeverity } from "./next-best-actions";
 
 const SEVERITY_VARIANT: Record<NextBestActionSeverity, "red" | "amber" | "blue"> = {
@@ -20,9 +21,11 @@ export function NextBestActionsPanel({ actions }: { actions: NextBestAction[] })
         )}
       </div>
       {actions.length === 0 ? (
-        <p className="text-sm text-zinc-500">
-          Nothing needs your attention right now. Nice.
-        </p>
+        <EmptyState
+          message="Nothing needs your attention right now. Nice."
+          actionLabel="Add a lead"
+          actionHref="/contacts/new?status=LEAD"
+        />
       ) : (
         <ul className="divide-y divide-zinc-800/60">
           {actions.map((action) => (

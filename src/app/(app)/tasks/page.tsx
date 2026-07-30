@@ -12,13 +12,23 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
-export default async function TasksPage() {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const { filter } = await searchParams;
   const tasks = await prisma.task.findMany({
     orderBy: [{ status: "asc" }, { dueDate: "asc" }],
     include: { contact: true, deal: true, project: true },
   });
 
-  const openTasks = tasks.filter((task) => task.status === "OPEN");
+  const now = new Date();
+  const openTasksAll = tasks.filter((task) => task.status === "OPEN");
+  const openTasks =
+    filter === "overdue"
+      ? openTasksAll.filter((task) => task.dueDate && task.dueDate < now)
+      : openTasksAll;
   const doneTasks = tasks.filter((task) => task.status === "DONE");
   const progress = tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
 
@@ -51,11 +61,20 @@ export default async function TasksPage() {
       </div>
 
       <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-        <h2 className="mb-4 text-sm font-semibold text-zinc-100">
-          Open ({openTasks.length})
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-100">
+            {filter === "overdue" ? "Overdue" : "Open"} ({openTasks.length})
+          </h2>
+          {filter === "overdue" && (
+            <Link href="/tasks" className="text-xs font-medium text-zinc-500 hover:text-indigo-400">
+              Clear filter
+            </Link>
+          )}
+        </div>
         {openTasks.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nothing open. Nice.</p>
+          <p className="text-sm text-zinc-500">
+            {filter === "overdue" ? "Nothing overdue. Nice." : "Nothing open. Nice."}
+          </p>
         ) : (
           <ul className="divide-y divide-zinc-800/60">
             {openTasks.map((task) => (
