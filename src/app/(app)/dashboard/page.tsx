@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { getNextBestActions } from "./next-best-actions";
+import { syncNextBestActions } from "../next-actions/sync";
+import { getTopActiveNextActions } from "../next-actions/query";
 import { NextBestActionsPanel } from "./next-best-actions-panel";
 import { checkOverdueTasks } from "@/lib/automations";
 import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
@@ -28,6 +29,11 @@ export default async function DashboardPage() {
   const startOfToday = startOfDayInZone(now, user.bookingTimezone);
   const endOfToday = endOfDayInZone(now, user.bookingTimezone);
   const startOfMonth = startOfMonthInZone(now, user.bookingTimezone);
+
+  // Reconcile persisted Next Best Action recommendations against live data
+  // before reading them below — this has to happen before the query, not
+  // inside the same Promise.all.
+  await syncNextBestActions(now);
 
   const [
     newLeadsToday,
@@ -87,7 +93,7 @@ export default async function DashboardPage() {
       where: { status: "OPEN", dueDate: { lt: startOfToday } },
     }),
     prisma.project.count({ where: { status: "ON_HOLD" } }),
-    getNextBestActions(user.bookingTimezone),
+    getTopActiveNextActions(6),
     getSalesPipelineStats(now),
     getRevenueSnapshot(now, startOfMonth),
     getDeliverySnapshot(now),
@@ -131,7 +137,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <NextBestActionsPanel actions={nextBestActions} />
+      <NextBestActionsPanel items={nextBestActions.items} totalActive={nextBestActions.totalActive} />
 
       <QuickActions />
 

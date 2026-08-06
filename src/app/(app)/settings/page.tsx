@@ -2,7 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { STAGE_ORDER, getStageLabels } from "@/lib/pipeline-stages";
+import { CONFIGURABLE_THRESHOLD_STAGES, getStageThresholds } from "@/lib/stage-thresholds";
 import { StageLabelInput } from "./stage-label-input";
+import { StageThresholdInput } from "./stage-threshold-input";
 import { SimpleListManager } from "./simple-list-manager";
 import { BrandColorPicker } from "./brand-color-picker";
 import { LandingPageSelect } from "./landing-page-select";
@@ -49,8 +51,9 @@ function LinkOutCard({ title, description, href, cta }: {
 export default async function SettingsPage() {
   const user = await requireUser();
 
-  const [stageLabels, serviceTypes, taskLabels] = await Promise.all([
+  const [stageLabels, stageThresholds, serviceTypes, taskLabels] = await Promise.all([
     getStageLabels(),
+    getStageThresholds(),
     prisma.serviceType.findMany({ orderBy: { name: "asc" } }),
     prisma.taskLabelPreset.findMany({ orderBy: { name: "asc" } }),
   ]);
@@ -77,6 +80,28 @@ export default async function SettingsPage() {
               <StageLabelInput stage={stage} label={stageLabels[stage]} />
             </div>
           ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Deal stage-age thresholds"
+        description="How many days a deal can sit in a stage before Next Best Actions flags it as stuck. Discovery Scheduled and Nurture aren't day-based — they're judged against the meeting date and scheduled follow-up date instead."
+      >
+        <div className="space-y-3">
+          {CONFIGURABLE_THRESHOLD_STAGES.map((stage) => (
+            <div key={stage} className="flex items-center gap-3">
+              <span className="w-40 shrink-0 text-xs text-zinc-500">{stageLabels[stage]}</span>
+              <StageThresholdInput stage={stage} days={stageThresholds[stage] ?? 5} />
+            </div>
+          ))}
+          <div className="flex items-center gap-3">
+            <span className="w-40 shrink-0 text-xs text-zinc-500">{stageLabels.DISCOVERY_SCHEDULED}</span>
+            <span className="text-xs text-zinc-600">Based on meeting date</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-40 shrink-0 text-xs text-zinc-500">{stageLabels.NURTURE}</span>
+            <span className="text-xs text-zinc-600">Based on scheduled follow-up</span>
+          </div>
         </div>
       </SettingsSection>
 

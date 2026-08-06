@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { DealStage } from "@prisma/client";
 import { STAGE_ORDER, DEFAULT_STAGE_LABELS } from "@/lib/pipeline-stages";
+import { CONFIGURABLE_THRESHOLD_STAGES } from "@/lib/stage-thresholds";
 import { isBrandColorKey } from "@/lib/brand-colors";
 
 const LANDING_PAGES = ["/dashboard", "/tasks", "/performance", "/deals", "/projects"];
@@ -65,6 +66,26 @@ export async function addTaskLabel(_prevState: { error?: string }, formData: For
 export async function deleteTaskLabel(id: string) {
   await prisma.taskLabelPreset.delete({ where: { id } });
   revalidatePath("/settings");
+}
+
+export async function updateStageThreshold(stage: DealStage, days: number) {
+  if (!CONFIGURABLE_THRESHOLD_STAGES.includes(stage)) {
+    return { error: "That stage doesn't use a fixed day threshold." };
+  }
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    return { error: "Enter a whole number of days between 1 and 365." };
+  }
+
+  await prisma.pipelineStageThreshold.upsert({
+    where: { stage },
+    update: { days },
+    create: { stage, days },
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/next-actions");
+  return {};
 }
 
 export async function updateBrandColor(color: string) {
