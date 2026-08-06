@@ -11,6 +11,8 @@ const TYPE_LABELS: Record<SearchResult["type"], string> = {
   task: "Task",
   project: "Project",
   article: "Knowledge",
+  invoice: "Invoice",
+  booking: "Booking",
 };
 
 function SearchIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -92,7 +94,7 @@ function CommandPaletteModal({ onClose }: { onClose: () => void }) {
                 onClose();
               }
             }}
-            placeholder="Search everything — contacts, deals, projects, tasks, knowledge…"
+            placeholder="Search everything — contacts, deals, invoices, bookings, knowledge…"
             className="flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
           />
           <kbd className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500">
