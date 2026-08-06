@@ -3,11 +3,17 @@ import { differenceInCalendarDays } from "date-fns";
 import type { DealStage } from "@prisma/client";
 
 const STAGE_PROBABILITY: Record<DealStage, number> = {
-  NEW: 0.1,
-  CONTACTED: 0.25,
-  PROPOSAL: 0.5,
+  NEW_LEAD: 0.05,
+  RESEARCHING: 0.1,
+  READY_TO_CONTACT: 0.15,
+  CONTACTED: 0.2,
+  DISCOVERY_SCHEDULED: 0.35,
+  DISCOVERY_COMPLETED: 0.45,
+  PROPOSAL_SENT: 0.6,
+  NEGOTIATION: 0.75,
   WON: 1,
   LOST: 0,
+  NURTURE: 0.05,
 };
 
 const STALE_DEAL_DAYS = 10;
@@ -16,7 +22,7 @@ export async function getSalesPipelineStats(now: Date) {
   const [openDeals, lastActivityByDeal] = await Promise.all([
     prisma.deal.findMany({
       where: { stage: { notIn: ["WON", "LOST"] } },
-      select: { id: true, stage: true, value: true, createdAt: true },
+      select: { id: true, stage: true, oneTimeValue: true, mrrValue: true, createdAt: true },
     }),
     prisma.activity.groupBy({
       by: ["dealId"],
@@ -25,9 +31,12 @@ export async function getSalesPipelineStats(now: Date) {
     }),
   ]);
 
-  const totalPipelineValue = openDeals.reduce((sum, d) => sum + (d.value ?? 0), 0);
+  const dealValue = (d: { oneTimeValue: number | null; mrrValue: number | null }) =>
+    (d.oneTimeValue ?? 0) + (d.mrrValue ?? 0);
+
+  const totalPipelineValue = openDeals.reduce((sum, d) => sum + dealValue(d), 0);
   const weightedPipelineValue = openDeals.reduce(
-    (sum, d) => sum + (d.value ?? 0) * STAGE_PROBABILITY[d.stage],
+    (sum, d) => sum + dealValue(d) * STAGE_PROBABILITY[d.stage],
     0
   );
   const averageDealAgeDays =

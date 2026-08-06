@@ -25,7 +25,7 @@ export function ActivityQuickForm({
       {contactId && <input type="hidden" name="contactId" value={contactId} />}
       {dealId && <input type="hidden" name="dealId" value={dealId} />}
       {projectId && <input type="hidden" name="projectId" value={projectId} />}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <select
           name="type"
           value={type}
@@ -45,7 +45,7 @@ export function ActivityQuickForm({
           name="summary"
           required
           placeholder="Left a voicemail about the proposal"
-          className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="min-w-0 flex-1 basis-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:basis-auto"
         />
         <button
           type="submit"

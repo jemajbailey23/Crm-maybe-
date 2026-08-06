@@ -39,6 +39,7 @@ model User {
   activities          Activity[]
   passwordResetTokens PasswordResetToken[]
   goals               Goal[]
+  assignedDeals       Deal[]
 }
 
 model PasswordResetToken {
@@ -118,7 +119,7 @@ model Contact {
 
   // Sales information
   leadSource         String?
-  pipelineStage      DealStage @default(NEW)
+  pipelineStage      DealStage @default(NEW_LEAD)
   estimatedDealValue Float?
   monthlyValue       Float?
   leadScore          Int? // 1-100
@@ -311,30 +312,70 @@ model Booking {
   contactId String?
 }
 
+// The 5 original values (NEW, CONTACTED, PROPOSAL, WON, LOST) expanded to an
+// 11-stage pipeline. Existing rows are remapped on migration: NEW->NEW_LEAD,
+// PROPOSAL->PROPOSAL_SENT, everything else keeps its name. Also used by
+// Contact.pipelineStage and PipelineStageLabel.stage, both remapped the
+// same way in the same migration.
 enum DealStage {
-  NEW
+  NEW_LEAD
+  RESEARCHING
+  READY_TO_CONTACT
   CONTACTED
-  PROPOSAL
+  DISCOVERY_SCHEDULED
+  DISCOVERY_COMPLETED
+  PROPOSAL_SENT
+  NEGOTIATION
   WON
   LOST
+  NURTURE
 }
 
 model Deal {
-  id          String    @id @default(cuid())
-  title       String
-  value       Float? // deal value in dollars
-  stage       DealStage @default(NEW)
-  isRecurring Boolean   @default(false) // recurring/retainer revenue vs one-time
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  wonAt       DateTime? // set when stage transitions to WON, for accurate monthly reporting
+  id    String    @id @default(cuid())
+  title String
+  stage DealStage @default(NEW_LEAD)
+
+  // Money — tracked separately since a deal can carry both a setup fee and
+  // an ongoing retainer at once; replaces the old value+isRecurring pair.
+  oneTimeValue Float?
+  mrrValue     Float?
+
+  serviceInterest   String? // free text, autocompletes from ServiceType
+  leadSource        String? // free text, matches Contact.leadSource's pattern
+  probability       Int? // 0-100, manual estimate
+  expectedCloseDate DateTime?
+
+  // Stage tracking
+  stageEnteredAt DateTime  @default(now()) // reset on every stage change; powers "days in stage"
+  wonAt          DateTime? // set when stage first transitions to WON, kept stable — revenue reporting relies on this
+
+  // Follow-through
+  nextAction      String?
+  nextActionDueAt DateTime?
+
+  // Stage-gate inputs (see deals/deal-rules.ts for what each gate requires)
+  decisionMaker    String? // primary decision-maker, required before Proposal Sent
+  meetingDate      DateTime? // required before Discovery Scheduled (or a related Booking)
+  startDate        DateTime? // required before Won
+  billingMethod    BillingType? // required before Won
+  proposalAccepted Boolean      @default(false) // confirmation/accepted proposal, required before Won
+  lostReason       String? // required before Lost
+
+  competitor String?
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   contactId String?
 
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyId String?
+
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedToId String?
 
   tasks      Task[]
   activities Activity[]
@@ -353,18 +394,18 @@ enum TaskRecurrence {
 }
 
 model Task {
-  id         String         @id @default(cuid())
-  title      String
-  dueDate    DateTime?
-  status     TaskStatus     @default(OPEN)
-  notes      String?
-  priority   Priority       @default(MEDIUM)
-  recurrence TaskRecurrence @default(NONE)
-  labels     String? // comma-separated for simplicity, same pattern as Contact.tags
-  progress   Int            @default(0) // 0-100
-  overdueNotified Boolean   @default(false) // guards the Task Overdue automation from re-firing
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id              String         @id @default(cuid())
+  title           String
+  dueDate         DateTime?
+  status          TaskStatus     @default(OPEN)
+  notes           String?
+  priority        Priority       @default(MEDIUM)
+  recurrence      TaskRecurrence @default(NONE)
+  labels          String? // comma-separated for simplicity, same pattern as Contact.tags
+  progress        Int            @default(0) // 0-100
+  overdueNotified Boolean        @default(false) // guards the Task Overdue automation from re-firing
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   assignedTo   User?   @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   assignedToId String?

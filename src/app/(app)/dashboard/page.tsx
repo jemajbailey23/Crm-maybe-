@@ -81,7 +81,7 @@ export default async function DashboardPage() {
       include: { contact: true },
     }),
     prisma.deal.findMany({
-      select: { stage: true, value: true },
+      select: { stage: true, oneTimeValue: true, mrrValue: true },
     }),
     prisma.task.count({
       where: { status: "OPEN", dueDate: { lt: startOfToday } },
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
   const closeRate = closedDeals.length > 0 ? Math.round((wonDeals.length / closedDeals.length) * 100) : null;
   const avgDealSize =
     wonDeals.length > 0
-      ? wonDeals.reduce((sum, d) => sum + (d.value ?? 0), 0) / wonDeals.length
+      ? wonDeals.reduce((sum, d) => sum + (d.oneTimeValue ?? 0) + (d.mrrValue ?? 0), 0) / wonDeals.length
       : null;
 
   const stageData = STAGES.map((s) => ({

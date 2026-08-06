@@ -15,7 +15,7 @@ export default async function NewDealPage({
 }) {
   const { contactId, companyId, title, stage } = await searchParams;
 
-  const [contacts, companies, stageLabels] = await Promise.all([
+  const [contacts, companies, stageLabels, users, serviceTypes] = await Promise.all([
     prisma.contact.findMany({
       orderBy: { firstName: "asc" },
       select: { id: true, firstName: true, lastName: true },
@@ -25,6 +25,8 @@ export default async function NewDealPage({
       select: { id: true, name: true },
     }),
     getStageLabels(),
+    prisma.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.serviceType.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
   ]);
 
   return (
@@ -38,6 +40,8 @@ export default async function NewDealPage({
           action={createDeal}
           contacts={contacts}
           companies={companies}
+          users={users}
+          serviceTypes={serviceTypes.map((s) => s.name)}
           stages={stageOptions(stageLabels)}
           defaultValues={{ contactId, companyId, title, stage }}
           submitLabel="Create deal"

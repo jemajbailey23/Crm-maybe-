@@ -45,7 +45,7 @@ export default async function FinancialsPage() {
     }),
     prisma.deal.findMany({
       where: { stage: { in: ["WON", "LOST"] } },
-      select: { stage: true, value: true },
+      select: { stage: true, oneTimeValue: true, mrrValue: true },
     }),
     prisma.contact.count({ where: { status: "CLIENT" } }),
     prisma.contact.findMany({
@@ -122,7 +122,7 @@ export default async function FinancialsPage() {
   const paidInvoiceTotal = invoices
     .filter((i) => i.status === "PAID")
     .reduce((sum, i) => sum + netAmount(i), 0);
-  const wonDealTotal = wonDeals.reduce((sum, d) => sum + (d.value ?? 0), 0);
+  const wonDealTotal = wonDeals.reduce((sum, d) => sum + (d.oneTimeValue ?? 0) + (d.mrrValue ?? 0), 0);
   const lifetimeClientValue = paidInvoiceTotal + wonDealTotal;
   const averageClientValue = totalClients > 0 ? lifetimeClientValue / totalClients : null;
 

@@ -28,19 +28,31 @@ export function Badge({
 }
 
 const DEAL_STAGE_VARIANT: Record<string, BadgeVariant> = {
-  NEW: "default",
+  NEW_LEAD: "default",
+  RESEARCHING: "default",
+  READY_TO_CONTACT: "default",
   CONTACTED: "blue",
-  PROPOSAL: "amber",
+  DISCOVERY_SCHEDULED: "blue",
+  DISCOVERY_COMPLETED: "violet",
+  PROPOSAL_SENT: "amber",
+  NEGOTIATION: "amber",
   WON: "emerald",
   LOST: "red",
+  NURTURE: "violet",
 };
 
 const DEAL_STAGE_LABEL: Record<string, string> = {
-  NEW: "New",
+  NEW_LEAD: "New Lead",
+  RESEARCHING: "Researching",
+  READY_TO_CONTACT: "Ready to Contact",
   CONTACTED: "Contacted",
-  PROPOSAL: "Proposal",
+  DISCOVERY_SCHEDULED: "Discovery Scheduled",
+  DISCOVERY_COMPLETED: "Discovery Completed",
+  PROPOSAL_SENT: "Proposal Sent",
+  NEGOTIATION: "Negotiation",
   WON: "Won",
   LOST: "Lost",
+  NURTURE: "Nurture",
 };
 
 export function DealStageBadge({ stage, label }: { stage: string; label?: string }) {

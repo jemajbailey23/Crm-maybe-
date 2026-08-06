@@ -69,7 +69,7 @@ function parseContactFields(formData: FormData) {
     leadSource: str(formData, "leadSource"),
     pipelineStage: STAGES.includes(stageRaw as DealStage)
       ? (stageRaw as DealStage)
-      : DealStage.NEW,
+      : DealStage.NEW_LEAD,
     estimatedDealValue: money(formData, "estimatedDealValue"),
     monthlyValue: money(formData, "monthlyValue"),
     leadScore: clampInt(formData, "leadScore", 1, 100),

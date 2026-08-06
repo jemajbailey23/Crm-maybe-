@@ -43,7 +43,7 @@ export default async function PerformancePage() {
     }),
     prisma.deal.findMany({
       where: { stage: "WON", wonAt: { gte: rangeStart, lte: rangeEnd } },
-      select: { value: true, wonAt: true },
+      select: { oneTimeValue: true, mrrValue: true, wonAt: true },
     }),
     prisma.invoice.findMany({
       where: { status: "PAID", paidAt: { gte: rangeStart, lte: rangeEnd } },
@@ -67,7 +67,7 @@ export default async function PerformancePage() {
 
   const revenueClosed = (start: Date, end: Date) => {
     const dealTotal = closedDeals(start, end).reduce(
-      (sum, d) => sum + (d.value ?? 0),
+      (sum, d) => sum + (d.oneTimeValue ?? 0) + (d.mrrValue ?? 0),
       0
     );
     const invoiceTotal = invoices

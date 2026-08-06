@@ -143,7 +143,7 @@ async function getClientHistory(name: string) {
       ],
     },
     include: {
-      deals: { select: { title: true, value: true, stage: true, isRecurring: true } },
+      deals: { select: { title: true, oneTimeValue: true, mrrValue: true, stage: true } },
       projects: { select: { name: true, status: true, progress: true, dueDate: true } },
       services: { select: { name: true, billingType: true, amount: true } },
       invoices: { select: { description: true, amount: true, status: true, dueDate: true } },
@@ -210,7 +210,7 @@ async function getHighestValueClients(limit: number) {
   const clients = await prisma.contact.findMany({
     where: { status: "CLIENT" },
     include: {
-      deals: { where: { stage: "WON" }, select: { value: true } },
+      deals: { where: { stage: "WON" }, select: { oneTimeValue: true, mrrValue: true } },
       invoices: { where: { status: "PAID" }, select: { amount: true, refundedAmount: true } },
     },
   });
@@ -220,7 +220,7 @@ async function getHighestValueClients(limit: number) {
       name: `${c.firstName} ${c.lastName}`,
       businessName: c.businessName,
       totalValue:
-        c.deals.reduce((sum, d) => sum + (d.value ?? 0), 0) +
+        c.deals.reduce((sum, d) => sum + (d.oneTimeValue ?? 0) + (d.mrrValue ?? 0), 0) +
         c.invoices.reduce((sum, i) => sum + (i.amount - i.refundedAmount), 0),
     }))
     .sort((a, b) => b.totalValue - a.totalValue)

@@ -10,6 +10,7 @@ import { ActivityQuickForm } from "../../activities/activity-quick-form";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ActivityTypeBadge } from "@/components/ui/badge";
 import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
+import { daysInStage, getDealWarnings } from "../deal-rules";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -26,12 +27,13 @@ export default async function DealDetailPage({
 }) {
   const { id } = await params;
 
-  const [deal, contacts, companies, stageLabels] = await Promise.all([
+  const [deal, contacts, companies, stageLabels, users, serviceTypes] = await Promise.all([
     prisma.deal.findUnique({
       where: { id },
       include: {
         contact: true,
         company: true,
+        assignedTo: { select: { id: true, name: true } },
         tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
         activities: { orderBy: { occurredAt: "desc" } },
       },
@@ -45,18 +47,28 @@ export default async function DealDetailPage({
       select: { id: true, name: true },
     }),
     getStageLabels(),
+    prisma.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.serviceType.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
   ]);
 
   if (!deal) notFound();
+
+  const now = new Date();
+  const hasBooking = deal.contactId
+    ? (await prisma.booking.findFirst({ where: { contactId: deal.contactId }, select: { id: true } })) !== null
+    : false;
+  const lastActivityAt = deal.activities[0]?.occurredAt ?? null;
+  const dealAge = daysInStage(deal.stageEnteredAt, now);
+  const warnings = getDealWarnings(deal, lastActivityAt, hasBooking, now);
 
   const updateDealWithId = updateDeal.bind(null, deal.id);
   const deleteDealWithId = deleteDeal.bind(null, deal.id);
 
   return (
     <div className="max-w-3xl space-y-8">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{deal.title}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50 break-words">{deal.title}</h1>
           <p className="mt-1 text-sm text-zinc-500">
             {deal.contact && (
               <Link href={`/contacts/${deal.contact.id}`} className="hover:text-indigo-400">
@@ -81,12 +93,45 @@ export default async function DealDetailPage({
         </form>
       </div>
 
+      <section className="animate-slide-up flex flex-wrap gap-x-6 gap-y-2 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-sm">
+        <div>
+          <span className="text-zinc-500">Days in stage: </span>
+          <span className="font-medium text-zinc-200">{dealAge}</span>
+        </div>
+        <div>
+          <span className="text-zinc-500">Last activity: </span>
+          <span className="font-medium text-zinc-200">
+            {lastActivityAt ? formatDate(lastActivityAt) : "None logged"}
+          </span>
+        </div>
+        {deal.assignedTo && (
+          <div>
+            <span className="text-zinc-500">Owner: </span>
+            <span className="font-medium text-zinc-200">{deal.assignedTo.name}</span>
+          </div>
+        )}
+        {warnings.length > 0 && (
+          <div className="flex w-full flex-wrap gap-1.5 pt-1">
+            {warnings.map((w) => (
+              <span
+                key={w.code}
+                className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20"
+              >
+                {w.label}
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <h2 className="mb-4 text-sm font-semibold text-zinc-100">Details</h2>
         <DealForm
           action={updateDealWithId}
           contacts={contacts}
           companies={companies}
+          users={users}
+          serviceTypes={serviceTypes.map((s) => s.name)}
           stages={stageOptions(stageLabels)}
           defaultValues={deal}
           submitLabel="Save changes"

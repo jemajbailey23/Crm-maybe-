@@ -3,14 +3,32 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { DealStage } from "@prisma/client";
 
-export const STAGE_ORDER: DealStage[] = ["NEW", "CONTACTED", "PROPOSAL", "WON", "LOST"];
+export const STAGE_ORDER: DealStage[] = [
+  "NEW_LEAD",
+  "RESEARCHING",
+  "READY_TO_CONTACT",
+  "CONTACTED",
+  "DISCOVERY_SCHEDULED",
+  "DISCOVERY_COMPLETED",
+  "PROPOSAL_SENT",
+  "NEGOTIATION",
+  "WON",
+  "LOST",
+  "NURTURE",
+];
 
 export const DEFAULT_STAGE_LABELS: Record<DealStage, string> = {
-  NEW: "New",
+  NEW_LEAD: "New Lead",
+  RESEARCHING: "Researching",
+  READY_TO_CONTACT: "Ready to Contact",
   CONTACTED: "Contacted",
-  PROPOSAL: "Proposal",
+  DISCOVERY_SCHEDULED: "Discovery Scheduled",
+  DISCOVERY_COMPLETED: "Discovery Completed",
+  PROPOSAL_SENT: "Proposal Sent",
+  NEGOTIATION: "Negotiation",
   WON: "Won",
   LOST: "Lost",
+  NURTURE: "Nurture",
 };
 
 export const getStageLabels = cache(async (): Promise<Record<DealStage, string>> => {

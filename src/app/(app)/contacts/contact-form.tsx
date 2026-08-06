@@ -10,11 +10,17 @@ const inputClass =
 const labelClass = "block text-sm font-medium text-zinc-300";
 
 const DEFAULT_STAGES: { value: string; label: string }[] = [
-  { value: "NEW", label: "New" },
+  { value: "NEW_LEAD", label: "New Lead" },
+  { value: "RESEARCHING", label: "Researching" },
+  { value: "READY_TO_CONTACT", label: "Ready to Contact" },
   { value: "CONTACTED", label: "Contacted" },
-  { value: "PROPOSAL", label: "Proposal" },
+  { value: "DISCOVERY_SCHEDULED", label: "Discovery Scheduled" },
+  { value: "DISCOVERY_COMPLETED", label: "Discovery Completed" },
+  { value: "PROPOSAL_SENT", label: "Proposal Sent" },
+  { value: "NEGOTIATION", label: "Negotiation" },
   { value: "WON", label: "Won" },
   { value: "LOST", label: "Lost" },
+  { value: "NURTURE", label: "Nurture" },
 ];
 
 const PRIORITIES: { value: string; label: string }[] = [
