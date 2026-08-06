@@ -38,6 +38,7 @@ type InvoiceItem = {
   amount: number;
   status: string;
   dueDate: Date | string | null;
+  stripeInvoiceId?: string | null;
 };
 
 function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
@@ -68,6 +69,14 @@ function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
           ))}
         </select>
         <InvoiceStatusBadge status={invoice.status} />
+        {invoice.stripeInvoiceId && (
+          <span
+            className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-inset ring-violet-500/20"
+            title="Synced from Stripe"
+          >
+            Stripe
+          </span>
+        )}
         <form action={deleteInvoice.bind(null, invoice.id)}>
           <button
             type="submit"

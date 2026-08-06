@@ -4,6 +4,7 @@ import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { StatCard } from "@/components/ui/stat-card";
 import { BarChart } from "@/components/ui/bar-chart";
 import { ProfitMarginControl } from "./profit-margin-control";
+import { isStripeConfigured } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,19 @@ export default async function FinancialsPage() {
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
             Revenue, recurring subscriptions, and sales conversion at a glance.
+          </p>
+          <p className="mt-2 text-xs">
+            {isStripeConfigured() ? (
+              <span className="inline-flex items-center gap-1.5 text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Connected to Stripe — paid invoices sync automatically
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-zinc-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" />
+                Stripe not connected — invoices are entered manually
+              </span>
+            )}
           </p>
         </div>
         <ProfitMarginControl percent={user.profitMarginPercent} />

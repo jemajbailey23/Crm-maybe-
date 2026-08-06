@@ -141,6 +141,11 @@ model Contact {
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   companyId String?
 
+  // Set the first time a Stripe payment is matched to this contact (by
+  // email), so future payments from the same Stripe customer attach here
+  // even if the contact's email is later changed.
+  stripeCustomerId String? @unique
+
   deals       Deal[]
   tasks       Task[]
   activities  Activity[]
@@ -173,6 +178,11 @@ model Invoice {
   dueDate     DateTime?
   paidAt      DateTime?
   createdAt   DateTime      @default(now())
+
+  // Set when this invoice was created/updated from a Stripe webhook event,
+  // so replayed/duplicate events update the same row instead of creating
+  // a second one, and the UI can show it was synced rather than manual.
+  stripeInvoiceId String? @unique
 
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String

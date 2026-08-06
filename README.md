@@ -37,6 +37,7 @@ This app deploys to **Vercel**, backed by a **Supabase** Postgres database.
    - `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` — optional, lets leads have file attachments (see `.env.example` for setup)
    - `CREDENTIAL_ENCRYPTION_KEY` — required for the client Secure Credential Vault (`openssl rand -hex 32`); back this up somewhere safe, since losing it makes stored credentials unrecoverable
    - `ANTHROPIC_API_KEY` — optional, powers the AI Assistant (get one at [console.anthropic.com](https://console.anthropic.com/settings/keys))
+   - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — optional, syncs Stripe invoices automatically (see [Stripe billing sync](#stripe-billing-sync) below)
 4. **Deploy.** The build command (`prisma migrate deploy && next build`) automatically applies the database schema on every deploy using `DIRECT_URL` — no manual migration step needed.
 5. Visit the deployed URL and create your account on the first-run signup page.
 
@@ -57,6 +58,21 @@ If those aren't set (e.g. in local dev), reset links are logged to the server co
 ```bash
 DATABASE_URL="<your production connection string>" npm run reset-password -- you@example.com newpassword123
 ```
+
+## Stripe billing sync
+
+If all your clients pay through Stripe, the CRM can sync invoices automatically instead of entering them by hand — a paid Stripe invoice shows up in that client's Billing tab and rolls into the Financials/Dashboard revenue numbers with no manual step. Contacts are matched to Stripe customers by email (a new contact is created automatically if there's no match, so a payment is never silently dropped).
+
+**Setup (one-time):**
+
+1. In your [Stripe Dashboard](https://dashboard.stripe.com/apikeys), copy your **Secret key** and set it as `STRIPE_SECRET_KEY`.
+2. Go to Stripe Dashboard → Developers → Webhooks → **Add endpoint**.
+   - Endpoint URL: `https://your-deployed-url/api/webhooks/stripe`
+   - Events to send: `invoice.paid` and `invoice.finalized`
+3. After creating it, click into the endpoint and copy its **Signing secret** (starts with `whsec_`) — set that as `STRIPE_WEBHOOK_SECRET`.
+4. Redeploy.
+
+Without both variables set, this feature is simply inactive — nothing crashes, invoices just stay manual. The Financials page shows whether Stripe is currently connected.
 
 ## Stack
 
