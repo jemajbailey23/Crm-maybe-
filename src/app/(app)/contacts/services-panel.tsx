@@ -2,6 +2,7 @@
 
 import { useActionState, useRef } from "react";
 import { addService, deleteService, type ServiceFormState } from "./services-actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 const initialState: ServiceFormState = {};
 
@@ -49,12 +50,12 @@ function ServiceRow({ service }: { service: ServiceItem }) {
           {service.billingType === "MONTHLY" ? "/mo" : ""}
         </span>
         <form action={deleteService.bind(null, service.id)}>
-          <button
-            type="submit"
+          <ConfirmSubmitButton
+            confirmMessage="Remove this service? This won't affect past revenue totals, only future ones."
             className="text-xs text-zinc-600 transition-colors hover:text-red-400"
           >
             Remove
-          </button>
+          </ConfirmSubmitButton>
         </form>
       </div>
     </li>

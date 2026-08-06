@@ -2,6 +2,7 @@
 
 import { useActionState, useRef } from "react";
 import { addLink, deleteLink, type LinkFormState } from "./links-actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 const initialState: LinkFormState = {};
 
@@ -72,12 +73,12 @@ export function LinksPanel({
                 {link.label}
               </a>
               <form action={deleteLink.bind(null, link.id)}>
-                <button
-                  type="submit"
+                <ConfirmSubmitButton
+                  confirmMessage="Remove this link?"
                   className="text-xs text-zinc-600 transition-colors hover:text-red-400"
                 >
                   Remove
-                </button>
+                </ConfirmSubmitButton>
               </form>
             </li>
           ))}

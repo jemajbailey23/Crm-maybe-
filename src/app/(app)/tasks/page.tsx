@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { toggleTaskStatus, deleteTask } from "./actions";
 import { TaskQuickForm } from "./task-quick-form";
 import { PriorityBadge, RecurrenceBadge, LabelChips } from "@/components/ui/badge";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -130,9 +131,12 @@ export default async function TasksPage({
                   </div>
                 </div>
                 <form action={deleteTask.bind(null, task.id)}>
-                  <button type="submit" className="shrink-0 text-xs text-zinc-600 transition-colors hover:text-red-400">
+                  <ConfirmSubmitButton
+                    confirmMessage="Delete this task?"
+                    className="shrink-0 text-xs text-zinc-600 transition-colors hover:text-red-400"
+                  >
                     Remove
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </li>
             ))}
@@ -164,9 +168,12 @@ export default async function TasksPage({
                   </Link>
                 </div>
                 <form action={deleteTask.bind(null, task.id)}>
-                  <button type="submit" className="text-xs text-zinc-600 transition-colors hover:text-red-400">
+                  <ConfirmSubmitButton
+                    confirmMessage="Delete this task?"
+                    className="text-xs text-zinc-600 transition-colors hover:text-red-400"
+                  >
                     Remove
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </li>
             ))}

@@ -7,6 +7,7 @@ import {
   revealCredential,
   type CredentialFormState,
 } from "./credentials-actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 const initialState: CredentialFormState = {};
 
@@ -69,12 +70,12 @@ function CredentialRow({ credential }: { credential: CredentialItem }) {
           )}
         </div>
         <form action={deleteCredential.bind(null, credential.id)}>
-          <button
-            type="submit"
+          <ConfirmSubmitButton
+            confirmMessage="Remove this credential? This can't be undone."
             className="shrink-0 text-xs text-zinc-600 transition-colors hover:text-red-400"
           >
             Remove
-          </button>
+          </ConfirmSubmitButton>
         </form>
       </div>
       <div className="mt-2 flex items-center gap-2">

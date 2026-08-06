@@ -146,12 +146,12 @@ export default async function TaskDetailPage({
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="text-xs text-zinc-500">{formatBytes(file.sizeBytes)}</span>
                   <form action={deleteAttachment.bind(null, file.id)}>
-                    <button
-                      type="submit"
+                    <ConfirmSubmitButton
+                      confirmMessage="Delete this file? This can't be undone."
                       className="text-xs text-zinc-600 transition-colors hover:text-red-400"
                     >
                       Remove
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
               </li>

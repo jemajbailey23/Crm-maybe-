@@ -8,6 +8,7 @@ import {
   type InvoiceFormState,
 } from "./invoices-actions";
 import { InvoiceStatusBadge } from "@/components/ui/badge";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 const initialState: InvoiceFormState = {};
 
@@ -88,12 +89,12 @@ function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
           </span>
         )}
         <form action={deleteInvoice.bind(null, invoice.id)}>
-          <button
-            type="submit"
+          <ConfirmSubmitButton
+            confirmMessage="Remove this invoice? This can't be undone."
             className="text-xs text-zinc-600 transition-colors hover:text-red-400"
           >
             Remove
-          </button>
+          </ConfirmSubmitButton>
         </form>
       </div>
     </li>

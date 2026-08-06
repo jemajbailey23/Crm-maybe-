@@ -174,12 +174,12 @@ export default async function ProjectDetailPage({
                   )}
                 </div>
                 <form action={deleteTask.bind(null, task.id)}>
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage="Delete this task?"
                     className="text-xs text-zinc-600 transition-colors hover:text-red-400"
                   >
                     Remove
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </li>
             ))}
@@ -211,12 +211,12 @@ export default async function ProjectDetailPage({
                     {formatBytes(file.sizeBytes)}
                   </span>
                   <form action={deleteAttachment.bind(null, file.id)}>
-                    <button
-                      type="submit"
+                    <ConfirmSubmitButton
+                      confirmMessage="Delete this file? This can't be undone."
                       className="text-xs text-zinc-600 transition-colors hover:text-red-400"
                     >
                       Remove
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
               </li>
@@ -245,12 +245,12 @@ export default async function ProjectDetailPage({
                 <div className="flex shrink-0 items-center gap-3">
                   <ActivityTypeBadge type={activity.type} />
                   <form action={deleteActivity.bind(null, activity.id)}>
-                    <button
-                      type="submit"
+                    <ConfirmSubmitButton
+                      confirmMessage="Delete this comment?"
                       className="text-xs text-zinc-600 transition-colors hover:text-red-400"
                     >
                       Remove
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
               </li>
@@ -285,12 +285,12 @@ export default async function ProjectDetailPage({
                   </p>
                 </div>
                 <form action={deleteTimeEntry.bind(null, entry.id)}>
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage="Delete this time entry?"
                     className="text-xs text-zinc-600 transition-colors hover:text-red-400"
                   >
                     Remove
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </li>
             ))}

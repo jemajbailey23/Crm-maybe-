@@ -7,6 +7,7 @@ import {
   deleteChecklistItem,
   type ChecklistFormState,
 } from "./checklist-actions";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 const initialState: ChecklistFormState = {};
 
@@ -38,12 +39,12 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
         </span>
       </div>
       <form action={deleteChecklistItem.bind(null, item.id)}>
-        <button
-          type="submit"
+        <ConfirmSubmitButton
+          confirmMessage="Remove this checklist item?"
           className="text-xs text-zinc-600 transition-colors hover:text-red-400"
         >
           Remove
-        </button>
+        </ConfirmSubmitButton>
       </form>
     </li>
   );
