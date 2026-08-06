@@ -12,6 +12,10 @@ function getTransport() {
   });
 }
 
+export function isMailConfigured() {
+  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+}
+
 async function send(options: {
   to: string;
   subject: string;

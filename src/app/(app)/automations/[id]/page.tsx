@@ -1,16 +1,19 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 import { AutomationForm } from "../automation-form";
 import { updateAutomationRule, deleteAutomationRule } from "../actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Badge } from "@/components/ui/badge";
 
-function formatDateTime(date: Date) {
+function formatDateTime(date: Date, timezone: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: timezone,
+    timeZoneName: "short",
   }).format(date);
 }
 
@@ -20,6 +23,7 @@ export default async function AutomationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
 
   const rule = await prisma.automationRule.findUnique({
     where: { id },
@@ -92,7 +96,7 @@ export default async function AutomationDetailPage({
                 <div className="min-w-0">
                   <p className="truncate text-zinc-200">{run.summary}</p>
                   <p className="truncate text-xs text-zinc-500">
-                    {formatDateTime(run.createdAt)}
+                    {formatDateTime(run.createdAt, user.bookingTimezone)}
                     {run.error && ` · ${run.error}`}
                   </p>
                 </div>

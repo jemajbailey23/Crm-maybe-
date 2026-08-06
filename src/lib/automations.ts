@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { sendAutomationEmail } from "@/lib/mail";
+import { sendAutomationEmail, isMailConfigured } from "@/lib/mail";
 import type { AutomationTrigger } from "@prisma/client";
 
 type TriggerContext = {
@@ -46,6 +46,15 @@ export async function fireAutomationTrigger(
             },
           });
         } else if (rule.actionType === "SEND_EMAIL") {
+          if (!isMailConfigured()) {
+            // Without GMAIL_USER/GMAIL_APP_PASSWORD set, mail.ts silently
+            // logs instead of sending (useful for local dev, dangerous here
+            // — an automation that quietly never emails anyone should never
+            // read as "Success"). Fail loudly so it shows up in Recent runs.
+            throw new Error(
+              "Email not sent — GMAIL_USER/GMAIL_APP_PASSWORD aren't configured"
+            );
+          }
           if (rule.emailRecipient === "CONTACT") {
             const contact = context.contactId
               ? await prisma.contact.findUnique({ where: { id: context.contactId } })
