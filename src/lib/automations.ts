@@ -72,7 +72,7 @@ export async function fireAutomationTrigger(
               tokens
             );
             const body = substituteTokens(rule.emailBody?.trim() || context.summary, tokens);
-            await sendAutomationEmail(contact.email, subject, body);
+            await sendAutomationEmail(contact.email, subject, body, owner?.name);
           } else if (owner) {
             const subject = rule.emailSubject?.trim() || `Automation: ${rule.name}`;
             const body = rule.emailBody?.trim()

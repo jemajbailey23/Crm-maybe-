@@ -21,6 +21,7 @@ async function send(options: {
   subject: string;
   text: string;
   html: string;
+  fromName?: string;
 }) {
   const transport = getTransport();
 
@@ -30,9 +31,10 @@ async function send(options: {
     return;
   }
 
+  const { fromName, ...mail } = options;
   await transport.sendMail({
-    from: `Bailey Ventures Digital CRM <${process.env.GMAIL_USER}>`,
-    ...options,
+    from: `${fromName || "Bailey Ventures Digital CRM"} <${process.env.GMAIL_USER}>`,
+    ...mail,
   });
 }
 
@@ -73,7 +75,16 @@ export async function sendBookingOwnerNotification(
   });
 }
 
-export async function sendAutomationEmail(to: string, subject: string, body: string) {
+export async function sendAutomationEmail(
+  to: string,
+  subject: string,
+  body: string,
+  // Client-facing automation emails (SEND_EMAIL rules aimed at a contact)
+  // pass the real owner's name here instead of the default "...CRM" sender
+  // name — a display name that reads like software is one of several
+  // signals spam filters weigh, and this one's easy to avoid.
+  fromName?: string
+) {
   await send({
     to,
     subject,
@@ -82,6 +93,7 @@ export async function sendAutomationEmail(to: string, subject: string, body: str
       .split("\n\n")
       .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`)
       .join(""),
+    fromName,
   });
 }
 
