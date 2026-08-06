@@ -17,7 +17,14 @@ async function findOrCreateContactForStripeCustomer({
   if (linked) return linked;
 
   if (email) {
-    const byEmail = await prisma.contact.findFirst({ where: { email } });
+    // Contact.email isn't unique, so if duplicates ever exist, pick the
+    // same one every time (oldest first) instead of whatever order
+    // Postgres happens to return — an arbitrary pick here could attach a
+    // client's payment to the wrong contact record on a later webhook.
+    const byEmail = await prisma.contact.findFirst({
+      where: { email },
+      orderBy: { createdAt: "asc" },
+    });
     if (byEmail) {
       return prisma.contact.update({
         where: { id: byEmail.id },

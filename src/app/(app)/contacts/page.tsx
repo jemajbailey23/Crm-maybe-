@@ -1,36 +1,48 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { SearchBox } from "@/components/search-box";
+import { Pagination } from "@/components/ui/pagination";
 import { deleteContact } from "./actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+
+const PAGE_SIZE = 50;
 
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
 }) {
-  const { q, status } = await searchParams;
+  const { q, status, page: pageRaw } = await searchParams;
   const statusFilter = status === "LEAD" || status === "CLIENT" ? status : undefined;
+  const page = Math.max(1, Math.trunc(Number(pageRaw)) || 1);
 
-  const contacts = await prisma.contact.findMany({
-    where: {
-      ...(statusFilter ? { status: statusFilter } : {}),
-      ...(q
-        ? {
-            OR: [
-              { firstName: { contains: q, mode: "insensitive" } },
-              { lastName: { contains: q, mode: "insensitive" } },
-              { email: { contains: q, mode: "insensitive" } },
-              { phone: { contains: q, mode: "insensitive" } },
-              { company: { name: { contains: q, mode: "insensitive" } } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    include: { company: true },
-  });
+  const where: Prisma.ContactWhereInput = {
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(q
+      ? {
+          OR: [
+            { firstName: { contains: q, mode: "insensitive" as const } },
+            { lastName: { contains: q, mode: "insensitive" as const } },
+            { email: { contains: q, mode: "insensitive" as const } },
+            { phone: { contains: q, mode: "insensitive" as const } },
+            { company: { name: { contains: q, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [contacts, totalCount] = await Promise.all([
+    prisma.contact.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { company: true },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.contact.count({ where }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -136,6 +148,13 @@ export default async function ContactsPage({
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={totalCount}
+          basePath="/contacts"
+          searchParams={{ q, status }}
+        />
       </div>
     </div>
   );

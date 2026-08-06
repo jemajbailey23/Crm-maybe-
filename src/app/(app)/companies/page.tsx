@@ -2,28 +2,39 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { SearchBox } from "@/components/search-box";
+import { Pagination } from "@/components/ui/pagination";
 import { deleteCompany } from "./actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+
+const PAGE_SIZE = 50;
 
 export default async function CompaniesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, page: pageRaw } = await searchParams;
+  const page = Math.max(1, Math.trunc(Number(pageRaw)) || 1);
 
-  const companies = await prisma.company.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { website: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { contacts: true, deals: true } } },
-  });
+  const where = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" as const } },
+          { website: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : undefined;
+
+  const [companies, totalCount] = await Promise.all([
+    prisma.company.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { contacts: true, deals: true } } },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.company.count({ where }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -117,6 +128,13 @@ export default async function CompaniesPage({
             </tbody>
           </table>
         )}
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={totalCount}
+          basePath="/companies"
+          searchParams={{ q }}
+        />
       </div>
     </div>
   );

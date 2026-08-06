@@ -46,17 +46,30 @@ export async function addInvoice(
 export async function updateInvoiceStatus(invoiceId: string, status: string) {
   if (!STATUSES.includes(status as InvoiceStatus)) return;
 
+  const existing = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    select: { status: true, paidAt: true },
+  });
+  if (!existing) return;
+
+  // Only a genuine transition into PAID counts as "just got paid." Without
+  // this, toggling PAID -> SENT -> PAID (or just re-selecting the same
+  // status) would re-fire INVOICE_PAID every time — duplicate tasks,
+  // duplicate emails to the client — and would also stomp the original
+  // paidAt timestamp that Financials' monthly revenue reporting relies on.
+  const justPaid = status === "PAID" && existing.status !== "PAID";
+
   const invoice = await prisma.invoice.update({
     where: { id: invoiceId },
     data: {
       status: status as InvoiceStatus,
-      paidAt: status === "PAID" ? new Date() : null,
+      paidAt: status === "PAID" ? (existing.paidAt ?? new Date()) : null,
     },
     include: { contact: true },
   });
   revalidatePath(`/contacts/${invoice.contactId}`);
 
-  if (status === "PAID") {
+  if (justPaid) {
     await fireAutomationTrigger("INVOICE_PAID", {
       contactId: invoice.contactId,
       summary: `${invoice.contact.businessName || `${invoice.contact.firstName} ${invoice.contact.lastName}`} — ${invoice.description} ($${invoice.amount})`,

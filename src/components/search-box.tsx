@@ -20,6 +20,10 @@ export function SearchBox({ placeholder }: { placeholder: string }) {
       } else {
         params.delete("q");
       }
+      // A new search invalidates whatever page you were on — start back at
+      // the top of the (now different) result set instead of landing on a
+      // page number that may no longer exist.
+      params.delete("page");
       router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`);
     }, 250);
   }
