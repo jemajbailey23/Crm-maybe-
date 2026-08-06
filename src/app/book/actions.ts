@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateAvailableSlots, type AvailabilityRule } from "@/lib/availability";
 import { sendBookingOwnerNotification } from "@/lib/mail";
@@ -65,9 +66,20 @@ export async function createBooking(
     });
   }
 
-  await prisma.booking.create({
-    data: { startsAt, endsAt, name, email, notes: notes || null, contactId: contact.id },
-  });
+  try {
+    await prisma.booking.create({
+      data: { startsAt, endsAt, name, email, notes: notes || null, contactId: contact.id },
+    });
+  } catch (err) {
+    // Someone else grabbed this exact slot between the availability check
+    // above and this insert (Booking.startsAt is unique at the DB level
+    // specifically to catch this race) — ask them to pick another time
+    // instead of showing a raw error.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return { error: "That time was just booked by someone else. Please pick another." };
+    }
+    throw err;
+  }
 
   await prisma.task.create({
     data: {

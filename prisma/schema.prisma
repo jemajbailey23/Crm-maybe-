@@ -297,7 +297,10 @@ model TimeEntry {
 
 model Booking {
   id        String   @id @default(cuid())
-  startsAt  DateTime
+  // Unique so two visitors racing for the same slot can't both succeed —
+  // the availability check that runs before this is a read, not a lock,
+  // so this is the actual guard against a double-booked slot.
+  startsAt  DateTime @unique
   endsAt    DateTime
   name      String
   email     String

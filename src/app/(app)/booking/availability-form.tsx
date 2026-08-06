@@ -39,8 +39,8 @@ export function AvailabilityForm({
     <form action={formAction} className="space-y-6">
       <div className="space-y-2">
         {days.map((day, i) => (
-          <div key={i} className="flex items-center gap-3 text-sm">
-            <label className="flex w-32 items-center gap-2 text-zinc-300">
+          <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+            <label className="flex w-24 shrink-0 items-center gap-2 text-zinc-300 sm:w-32">
               <input
                 type="checkbox"
                 name={`enabled-${i}`}

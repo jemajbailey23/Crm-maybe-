@@ -67,7 +67,7 @@ export default async function ContactsPage({
         <SearchBox key={q ?? ""} placeholder="Search contacts…" />
       </Suspense>
 
-      <div className="animate-slide-up overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+      <div className="animate-slide-up overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/50">
         {contacts.length === 0 ? (
           <p className="p-6 text-sm text-zinc-500">
             {q ? (
@@ -125,7 +125,7 @@ export default async function ContactsPage({
                     <form action={deleteContact.bind(null, contact.id)}>
                       <ConfirmSubmitButton
                         confirmMessage={`Delete ${contact.firstName} ${contact.lastName}? This can't be undone.`}
-                        className="text-xs text-zinc-600 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                        className="text-xs text-zinc-600 transition-opacity hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
                       >
                         Delete
                       </ConfirmSubmitButton>
