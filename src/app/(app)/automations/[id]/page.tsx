@@ -51,6 +51,16 @@ export default async function AutomationDetailPage({
       </div>
 
       <AutomationForm
+        // Force a fresh mount every time the rule actually changes (including
+        // right after a save) instead of reusing the previous form instance.
+        // React 19 resets a <form>'s fields back to their very first render
+        // once its action completes — for a plain re-render that's harmless
+        // on uncontrolled inputs (they revert to what's already saved), but
+        // it snaps controlled selects like "Do this…" back to the first
+        // <option> in the list, visually corrupting the field until the next
+        // real edit. Remounting via `key` sidesteps all of that by always
+        // starting the form fresh from the current database values.
+        key={rule.updatedAt.toISOString()}
         action={updateWithId}
         submitLabel="Save changes"
         defaultValues={{
