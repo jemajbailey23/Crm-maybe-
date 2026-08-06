@@ -39,6 +39,7 @@ type InvoiceItem = {
   status: string;
   dueDate: Date | string | null;
   stripeInvoiceId?: string | null;
+  refundedAmount?: number;
 };
 
 function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
@@ -51,6 +52,7 @@ function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
         <p className="text-xs text-zinc-500">
           {formatCurrency(invoice.amount)}
           {invoice.dueDate ? ` · Due ${formatDate(invoice.dueDate)}` : ""}
+          {invoice.refundedAmount ? ` · ${formatCurrency(invoice.refundedAmount)} refunded` : ""}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -69,6 +71,14 @@ function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
           ))}
         </select>
         <InvoiceStatusBadge status={invoice.status} />
+        {invoice.refundedAmount ? (
+          <span
+            className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/20"
+            title="Refunded via Stripe"
+          >
+            Refunded
+          </span>
+        ) : null}
         {invoice.stripeInvoiceId && (
           <span
             className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-inset ring-violet-500/20"

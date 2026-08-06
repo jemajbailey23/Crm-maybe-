@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe";
-import { syncStripeInvoice } from "@/lib/stripe-sync";
+import { syncStripeInvoice, syncStripeRefund, syncStripeSubscription } from "@/lib/stripe-sync";
 
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -33,6 +33,15 @@ export async function POST(request: NextRequest) {
         break;
       case "invoice.finalized":
         await syncStripeInvoice(event.data.object as Stripe.Invoice, "SENT");
+        break;
+      case "credit_note.created":
+      case "credit_note.updated":
+        await syncStripeRefund(event.data.object as Stripe.CreditNote);
+        break;
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted":
+        await syncStripeSubscription(event.data.object as Stripe.Subscription);
         break;
       default:
         break;

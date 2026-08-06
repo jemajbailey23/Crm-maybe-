@@ -211,7 +211,7 @@ async function getHighestValueClients(limit: number) {
     where: { status: "CLIENT" },
     include: {
       deals: { where: { stage: "WON" }, select: { value: true } },
-      invoices: { where: { status: "PAID" }, select: { amount: true } },
+      invoices: { where: { status: "PAID" }, select: { amount: true, refundedAmount: true } },
     },
   });
 
@@ -221,7 +221,7 @@ async function getHighestValueClients(limit: number) {
       businessName: c.businessName,
       totalValue:
         c.deals.reduce((sum, d) => sum + (d.value ?? 0), 0) +
-        c.invoices.reduce((sum, i) => sum + i.amount, 0),
+        c.invoices.reduce((sum, i) => sum + (i.amount - i.refundedAmount), 0),
     }))
     .sort((a, b) => b.totalValue - a.totalValue)
     .slice(0, limit || 10);

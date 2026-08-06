@@ -68,11 +68,17 @@ If all your clients pay through Stripe, the CRM can sync invoices automatically 
 1. In your [Stripe Dashboard](https://dashboard.stripe.com/apikeys), copy your **Secret key** and set it as `STRIPE_SECRET_KEY`.
 2. Go to Stripe Dashboard → Developers → Webhooks → **Add endpoint**.
    - Endpoint URL: `https://your-deployed-url/api/webhooks/stripe`
-   - Events to send: `invoice.paid` and `invoice.finalized`
+   - Events to send: `invoice.paid`, `invoice.finalized`, `credit_note.created`, `credit_note.updated`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
 3. After creating it, click into the endpoint and copy its **Signing secret** (starts with `whsec_`) — set that as `STRIPE_WEBHOOK_SECRET`.
 4. Redeploy.
 
 Without both variables set, this feature is simply inactive — nothing crashes, invoices just stay manual. The Financials page shows whether Stripe is currently connected.
+
+Beyond invoices, the sync also covers:
+
+- **Account balance** — your available + pending Stripe balance shows on Financials.
+- **Refunds** — if you issue a refund/credit note against a paid invoice in Stripe, the refunded amount is netted out of that invoice's total everywhere it's shown (Billing tab, Financials, Dashboard).
+- **Subscriptions** — a Stripe Subscription is synced into the client's Billing tab as a recurring Service and counts toward MRR automatically; canceling it in Stripe ends it here too (the history stays, so past months' MRR still calculates correctly).
 
 ## Stack
 

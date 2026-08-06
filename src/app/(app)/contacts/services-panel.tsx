@@ -19,12 +19,30 @@ type ServiceItem = {
   name: string;
   billingType: string;
   amount: number | null;
+  endedAt?: string | Date | null;
+  stripeSubscriptionId?: string | null;
 };
 
 function ServiceRow({ service }: { service: ServiceItem }) {
+  const ended = Boolean(service.endedAt);
   return (
     <li className="flex items-center justify-between gap-3 py-2 text-sm">
-      <span className="text-zinc-200">{service.name}</span>
+      <span className={`flex items-center gap-2 ${ended ? "text-zinc-500 line-through" : "text-zinc-200"}`}>
+        {service.name}
+        {service.stripeSubscriptionId && (
+          <span
+            className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300 ring-1 ring-inset ring-violet-500/20"
+            title="Synced from Stripe"
+          >
+            Stripe
+          </span>
+        )}
+        {ended && (
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+            Ended
+          </span>
+        )}
+      </span>
       <div className="flex items-center gap-3">
         <span className="text-xs text-zinc-500">
           {formatCurrency(service.amount) ?? "—"}
@@ -58,7 +76,11 @@ export function ServicesPanel({
 
   const monthly = services.filter((s) => s.billingType === "MONTHLY");
   const oneTime = services.filter((s) => s.billingType === "ONE_TIME");
-  const monthlyTotal = monthly.reduce((sum, s) => sum + (s.amount ?? 0), 0);
+  // Ended subscriptions still show in the list (so canceling in Stripe doesn't
+  // erase history here), but they no longer count toward the active total.
+  const monthlyTotal = monthly
+    .filter((s) => !s.endedAt)
+    .reduce((sum, s) => sum + (s.amount ?? 0), 0);
   const oneTimeTotal = oneTime.reduce((sum, s) => sum + (s.amount ?? 0), 0);
 
   return (

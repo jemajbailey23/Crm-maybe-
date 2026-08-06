@@ -165,6 +165,17 @@ model Service {
   amount      Float?
   createdAt   DateTime    @default(now())
 
+  // Set once this recurring service is canceled (from Stripe or manually),
+  // so it drops out of active-service lists while still counting toward
+  // historical MRR for the months it was actually active.
+  endedAt DateTime?
+
+  // Set when this service was created/updated from a Stripe subscription
+  // webhook event, so replayed events update the same row instead of
+  // creating a second one, and the UI can show it was synced rather than
+  // entered manually.
+  stripeSubscriptionId String? @unique
+
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String
 }
@@ -183,6 +194,12 @@ model Invoice {
   // so replayed/duplicate events update the same row instead of creating
   // a second one, and the UI can show it was synced rather than manual.
   stripeInvoiceId String? @unique
+
+  // Cents refunded via Stripe are netted out of revenue reporting (amount -
+  // refundedAmount) without inventing a new "refunded" status, since a
+  // partially-refunded invoice is still meaningfully "paid".
+  refundedAmount Float     @default(0)
+  refundedAt     DateTime?
 
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String

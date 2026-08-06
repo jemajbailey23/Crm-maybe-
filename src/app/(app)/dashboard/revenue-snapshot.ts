@@ -5,22 +5,27 @@ import { prisma } from "@/lib/prisma";
 export async function getRevenueSnapshot(now: Date, startOfMonth: Date) {
   const [services, invoices, totalClients, revenueGoal] = await Promise.all([
     prisma.service.findMany({
-      select: { billingType: true, amount: true, createdAt: true },
+      select: { billingType: true, amount: true, createdAt: true, endedAt: true },
     }),
     prisma.invoice.findMany({
-      select: { amount: true, status: true, paidAt: true, dueDate: true },
+      select: { amount: true, status: true, paidAt: true, dueDate: true, refundedAmount: true },
     }),
     prisma.contact.count({ where: { status: "CLIENT" } }),
     prisma.goal.findFirst({ where: { metric: "REVENUE", period: "MONTHLY" } }),
   ]);
 
   const mrr = services
-    .filter((s) => s.billingType === "MONTHLY" && s.createdAt <= now)
+    .filter(
+      (s) =>
+        s.billingType === "MONTHLY" &&
+        s.createdAt <= now &&
+        (s.endedAt === null || s.endedAt > now)
+    )
     .reduce((sum, s) => sum + (s.amount ?? 0), 0);
 
   const oneTimeThisMonth = invoices
     .filter((i) => i.status === "PAID" && i.paidAt && i.paidAt >= startOfMonth)
-    .reduce((sum, i) => sum + i.amount, 0);
+    .reduce((sum, i) => sum + (i.amount - i.refundedAmount), 0);
 
   const revenueThisMonth = mrr + oneTimeThisMonth;
 

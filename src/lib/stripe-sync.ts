@@ -2,6 +2,7 @@ import "server-only";
 import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { fireAutomationTrigger } from "@/lib/automations";
+import { getStripeClient } from "@/lib/stripe";
 
 async function findOrCreateContactForStripeCustomer({
   customerId,
@@ -99,4 +100,82 @@ export async function syncStripeInvoice(stripeInvoice: Stripe.Invoice, status: "
       summary: `${contactDisplayName(contact)} — ${description} ($${amount})`,
     });
   }
+}
+
+// Stripe's modern refund path for a paid invoice is a Credit Note (the
+// Charge object no longer carries a direct `invoice` link in this API
+// version). Rather than summing individual credit notes ourselves — and
+// risking double-counting on a replayed webhook — we re-fetch the invoice
+// from Stripe and read its `post_payment_credit_notes_amount`, which is
+// Stripe's own running total of everything credited back after payment.
+// That makes this handler naturally idempotent no matter how many times
+// `credit_note.created`/`credit_note.updated` gets redelivered.
+export async function syncStripeRefund(creditNote: Stripe.CreditNote) {
+  const invoiceId = typeof creditNote.invoice === "string" ? creditNote.invoice : creditNote.invoice?.id;
+  if (!invoiceId) return;
+
+  const invoice = await prisma.invoice.findUnique({ where: { stripeInvoiceId: invoiceId } });
+  if (!invoice) return; // not an invoice we're tracking — nothing to net out
+
+  const stripeInvoice = await getStripeClient().invoices.retrieve(invoiceId);
+  const refundedAmount = stripeInvoice.post_payment_credit_notes_amount / 100;
+  if (refundedAmount <= 0) return;
+
+  await prisma.invoice.update({
+    where: { id: invoice.id },
+    data: { refundedAmount, refundedAt: new Date() },
+  });
+}
+
+function subscriptionBillingType(subscription: Stripe.Subscription): "MONTHLY" | "ONE_TIME" {
+  const interval = subscription.items.data[0]?.price?.recurring?.interval;
+  return interval === "month" ? "MONTHLY" : "ONE_TIME";
+}
+
+function subscriptionName(subscription: Stripe.Subscription): string {
+  const price = subscription.items.data[0]?.price;
+  if (price?.nickname) return price.nickname;
+  if (typeof price?.product === "string") return `Stripe subscription (${price.product})`;
+  return "Stripe subscription";
+}
+
+// Handles `customer.subscription.created`, `.updated`, and `.deleted`.
+// Upserts by stripeSubscriptionId so the same Service row is kept in sync
+// across the whole lifecycle rather than creating a new one on every event.
+// Canceled subscriptions are soft-ended (endedAt set) rather than deleted,
+// so past months still count correctly toward historical MRR.
+export async function syncStripeSubscription(subscription: Stripe.Subscription) {
+  const customerId =
+    typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
+  if (!customerId) return;
+
+  const contact = await findOrCreateContactForStripeCustomer({
+    customerId,
+    email: null,
+    name: null,
+  });
+
+  const isActive = subscription.status === "active" || subscription.status === "trialing";
+  const endedAt = !isActive
+    ? new Date((subscription.canceled_at ?? subscription.ended_at ?? Math.floor(Date.now() / 1000)) * 1000)
+    : null;
+  const amount = (subscription.items.data[0]?.price?.unit_amount ?? 0) / 100;
+
+  await prisma.service.upsert({
+    where: { stripeSubscriptionId: subscription.id },
+    update: {
+      name: subscriptionName(subscription),
+      billingType: subscriptionBillingType(subscription),
+      amount,
+      endedAt,
+    },
+    create: {
+      stripeSubscriptionId: subscription.id,
+      contactId: contact.id,
+      name: subscriptionName(subscription),
+      billingType: subscriptionBillingType(subscription),
+      amount,
+      endedAt,
+    },
+  });
 }

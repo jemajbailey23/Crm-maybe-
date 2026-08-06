@@ -4,7 +4,7 @@ import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { StatCard } from "@/components/ui/stat-card";
 import { BarChart } from "@/components/ui/bar-chart";
 import { ProfitMarginControl } from "./profit-margin-control";
-import { isStripeConfigured } from "@/lib/stripe";
+import { isStripeConfigured, getStripeBalance } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +36,12 @@ export default async function FinancialsPage() {
   const startOfLastMonth = startOfMonth(subMonths(now, 1));
   const endOfLastMonth = endOfMonth(subMonths(now, 1));
 
-  const [services, invoices, deals, totalClients, clientContacts] = await Promise.all([
+  const [services, invoices, deals, totalClients, clientContacts, stripeBalance] = await Promise.all([
     prisma.service.findMany({
-      select: { billingType: true, amount: true, createdAt: true },
+      select: { billingType: true, amount: true, createdAt: true, endedAt: true, stripeSubscriptionId: true },
     }),
     prisma.invoice.findMany({
-      select: { amount: true, status: true, paidAt: true },
+      select: { amount: true, status: true, paidAt: true, refundedAmount: true },
     }),
     prisma.deal.findMany({
       where: { stage: { in: ["WON", "LOST"] } },
@@ -52,16 +52,29 @@ export default async function FinancialsPage() {
       where: { status: "CLIENT" },
       select: { createdAt: true },
     }),
+    getStripeBalance(),
   ]);
+
+  // Net amount actually kept from an invoice — a partial refund still counts
+  // as "paid," it just doesn't count as revenue for the refunded portion.
+  const netAmount = (i: { amount: number; refundedAmount: number }) => i.amount - i.refundedAmount;
 
   const mrrAsOf = (date: Date) =>
     services
-      .filter((s) => s.billingType === "MONTHLY" && s.createdAt <= date)
+      .filter(
+        (s) =>
+          s.billingType === "MONTHLY" &&
+          s.createdAt <= date &&
+          (s.endedAt === null || s.endedAt > date)
+      )
       .reduce((sum, s) => sum + (s.amount ?? 0), 0);
 
   const mrr = mrrAsOf(now);
   const activeSubscriptionCount = services.filter(
-    (s) => s.billingType === "MONTHLY"
+    (s) => s.billingType === "MONTHLY" && s.endedAt === null
+  ).length;
+  const stripeSubscriptionCount = services.filter(
+    (s) => s.stripeSubscriptionId && s.endedAt === null
   ).length;
 
   const outstandingInvoices = invoices.filter(
@@ -83,8 +96,11 @@ export default async function FinancialsPage() {
       i.paidAt >= startOfLastMonth &&
       i.paidAt <= endOfLastMonth
   );
-  const oneTimeThisMonth = paidInThisMonth.reduce((sum, i) => sum + i.amount, 0);
-  const oneTimeLastMonth = paidInLastMonth.reduce((sum, i) => sum + i.amount, 0);
+  const oneTimeThisMonth = paidInThisMonth.reduce((sum, i) => sum + netAmount(i), 0);
+  const oneTimeLastMonth = paidInLastMonth.reduce((sum, i) => sum + netAmount(i), 0);
+
+  const totalRefunded = invoices.reduce((sum, i) => sum + i.refundedAmount, 0);
+  const refundedInvoiceCount = invoices.filter((i) => i.refundedAmount > 0).length;
 
   const monthlyRevenue = mrr + oneTimeThisMonth;
   const lastMonthRevenue = mrrAsOf(endOfLastMonth) + oneTimeLastMonth;
@@ -105,7 +121,7 @@ export default async function FinancialsPage() {
 
   const paidInvoiceTotal = invoices
     .filter((i) => i.status === "PAID")
-    .reduce((sum, i) => sum + i.amount, 0);
+    .reduce((sum, i) => sum + netAmount(i), 0);
   const wonDealTotal = wonDeals.reduce((sum, d) => sum + (d.value ?? 0), 0);
   const lifetimeClientValue = paidInvoiceTotal + wonDealTotal;
   const averageClientValue = totalClients > 0 ? lifetimeClientValue / totalClients : null;
@@ -115,7 +131,7 @@ export default async function FinancialsPage() {
     const paid = invoices.filter(
       (i) => i.status === "PAID" && i.paidAt && i.paidAt >= m.start && i.paidAt <= m.end
     );
-    const total = paid.reduce((sum, i) => sum + i.amount, 0);
+    const total = paid.reduce((sum, i) => sum + netAmount(i), 0);
     return { label: m.label, value: total, display: formatCurrency(total) };
   });
   const mrrGrowthData = months.map((m) => {
@@ -158,7 +174,15 @@ export default async function FinancialsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Monthly revenue" value={formatCurrency(monthlyRevenue)} sub="Recurring + invoices paid this month" />
-        <StatCard label="MRR" value={formatCurrency(mrr)} sub={`${activeSubscriptionCount} active subscriptions`} />
+        <StatCard
+          label="MRR"
+          value={formatCurrency(mrr)}
+          sub={
+            stripeSubscriptionCount > 0
+              ? `${activeSubscriptionCount} active (${stripeSubscriptionCount} via Stripe)`
+              : `${activeSubscriptionCount} active subscriptions`
+          }
+        />
         <StatCard
           label="Outstanding invoices"
           value={formatCurrency(outstandingTotal)}
@@ -193,6 +217,22 @@ export default async function FinancialsPage() {
           label="Proposal acceptance rate"
           value={proposalAcceptanceRate === null ? "—" : `${proposalAcceptanceRate}%`}
           sub={`${wonDeals.length} of ${wonDeals.length + lostDeals.length} decided`}
+        />
+        {stripeBalance && (
+          <StatCard
+            label="Stripe balance"
+            value={formatCurrency(stripeBalance.available)}
+            sub={
+              stripeBalance.pending > 0
+                ? `+ ${formatCurrency(stripeBalance.pending)} pending`
+                : "Available now"
+            }
+          />
+        )}
+        <StatCard
+          label="Refunded"
+          value={formatCurrency(totalRefunded)}
+          sub={refundedInvoiceCount > 0 ? `${refundedInvoiceCount} invoice(s)` : "No refunds"}
         />
       </div>
 

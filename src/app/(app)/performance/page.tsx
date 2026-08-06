@@ -47,7 +47,7 @@ export default async function PerformancePage() {
     }),
     prisma.invoice.findMany({
       where: { status: "PAID", paidAt: { gte: rangeStart, lte: rangeEnd } },
-      select: { amount: true, paidAt: true },
+      select: { amount: true, paidAt: true, refundedAmount: true },
     }),
     prisma.goal.findMany({ where: { userId: user.id } }),
   ]);
@@ -72,7 +72,7 @@ export default async function PerformancePage() {
     );
     const invoiceTotal = invoices
       .filter((i) => inRange(i.paidAt, start, end))
-      .reduce((sum, i) => sum + i.amount, 0);
+      .reduce((sum, i) => sum + (i.amount - i.refundedAmount), 0);
     return dealTotal + invoiceTotal;
   };
 
