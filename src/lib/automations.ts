@@ -7,7 +7,17 @@ type TriggerContext = {
   contactId?: string;
   summary: string;
   payload?: Record<string, unknown>;
+  // Extra {{token}} substitutions available to a SEND_EMAIL action's
+  // subject/body when it's sent to the contact — e.g. {{date}} for an
+  // appointment time. {{name}} and {{email}} are always filled in from the
+  // contact record itself, so callers only need to pass event-specific
+  // extras here.
+  variables?: Record<string, string>;
 };
+
+function substituteTokens(text: string, tokens: Record<string, string>) {
+  return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => tokens[key] ?? match);
+}
 
 export async function fireAutomationTrigger(
   trigger: AutomationTrigger,
@@ -36,7 +46,25 @@ export async function fireAutomationTrigger(
             },
           });
         } else if (rule.actionType === "SEND_EMAIL") {
-          if (owner) {
+          if (rule.emailRecipient === "CONTACT") {
+            const contact = context.contactId
+              ? await prisma.contact.findUnique({ where: { id: context.contactId } })
+              : null;
+            if (!contact?.email) {
+              throw new Error("No contact email address to send to");
+            }
+            const tokens: Record<string, string> = {
+              name: contact.firstName || contact.businessName || contact.lastName || "there",
+              email: contact.email,
+              ...context.variables,
+            };
+            const subject = substituteTokens(
+              rule.emailSubject?.trim() || `A message from ${owner?.name ?? "us"}`,
+              tokens
+            );
+            const body = substituteTokens(rule.emailBody?.trim() || context.summary, tokens);
+            await sendAutomationEmail(contact.email, subject, body);
+          } else if (owner) {
             const subject = rule.emailSubject?.trim() || `Automation: ${rule.name}`;
             const body = rule.emailBody?.trim()
               ? `${rule.emailBody.trim()}\n\n${context.summary}`

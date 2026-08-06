@@ -59,6 +59,7 @@ export default async function AutomationDetailPage({
           actionType: rule.actionType,
           taskTitle: rule.taskTitle,
           taskDueInDays: rule.taskDueInDays,
+          emailRecipient: rule.emailRecipient,
           emailSubject: rule.emailSubject,
           emailBody: rule.emailBody,
           webhookUrl: rule.webhookUrl,

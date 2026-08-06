@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateAvailableSlots, type AvailabilityRule } from "@/lib/availability";
-import { sendBookingOwnerNotification, sendBookingConfirmation } from "@/lib/mail";
+import { sendBookingOwnerNotification } from "@/lib/mail";
 import { fireAutomationTrigger } from "@/lib/automations";
 
 export type BookingState = { error?: string; success?: boolean };
@@ -90,32 +90,39 @@ export async function createBooking(
 
   // The booking itself is already saved at this point — a broken email
   // provider (bad Gmail credentials, etc.) should never take down the
-  // booking confirmation for the visitor. Log and move on.
+  // booking confirmation for the visitor. Log and move on. (The visitor's
+  // own confirmation email is sent below via the automation system, not
+  // here — see the "Booking confirmation to client" automation.)
   try {
-    await Promise.all([
-      sendBookingOwnerNotification(owner.email, {
-        name,
-        email,
-        startsAt,
-        notes: notes || null,
-        timezone: owner.bookingTimezone,
-      }),
-      sendBookingConfirmation(email, {
-        name,
-        startsAt,
-        timezone: visitorTimezone || owner.bookingTimezone,
-      }),
-    ]);
+    await sendBookingOwnerNotification(owner.email, {
+      name,
+      email,
+      startsAt,
+      notes: notes || null,
+      timezone: owner.bookingTimezone,
+    });
   } catch (err) {
-    console.error("[booking] failed to send confirmation email(s)", err);
+    console.error("[booking] failed to send owner notification email", err);
   }
 
   revalidatePath("/booking");
   revalidatePath("/book");
 
+  const when = startsAt.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: visitorTimezone || owner.bookingTimezone,
+    timeZoneName: "short",
+  });
+
   await fireAutomationTrigger("APPOINTMENT_BOOKED", {
     contactId: contact.id,
     summary: `${name} booked a call for ${startsAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
+    variables: { date: when },
   });
 
   return { success: true };

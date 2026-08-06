@@ -2,8 +2,16 @@
 
 import { useActionState, useState } from "react";
 import type { AutomationFormState } from "./actions";
-import { TRIGGERS, TRIGGER_LABEL, TRIGGER_DESCRIPTION, ACTION_TYPES, ACTION_LABEL } from "./meta";
-import type { AutomationActionType, AutomationTrigger } from "@prisma/client";
+import {
+  TRIGGERS,
+  TRIGGER_LABEL,
+  TRIGGER_DESCRIPTION,
+  ACTION_TYPES,
+  ACTION_LABEL,
+  EMAIL_RECIPIENTS,
+  EMAIL_RECIPIENT_LABEL,
+} from "./meta";
+import type { AutomationActionType, AutomationEmailRecipient, AutomationTrigger } from "@prisma/client";
 
 const initialState: AutomationFormState = {};
 
@@ -26,6 +34,7 @@ export function AutomationForm({
     actionType?: AutomationActionType;
     taskTitle?: string | null;
     taskDueInDays?: number | null;
+    emailRecipient?: AutomationEmailRecipient;
     emailSubject?: string | null;
     emailBody?: string | null;
     webhookUrl?: string | null;
@@ -38,6 +47,9 @@ export function AutomationForm({
   );
   const [actionType, setActionType] = useState<AutomationActionType>(
     defaultValues?.actionType ?? "CREATE_TASK"
+  );
+  const [emailRecipient, setEmailRecipient] = useState<AutomationEmailRecipient>(
+    defaultValues?.emailRecipient ?? "OWNER"
   );
 
   return (
@@ -113,13 +125,35 @@ export function AutomationForm({
 
       {actionType === "SEND_EMAIL" && (
         <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <p className="text-xs text-zinc-500">Sent to your own account email.</p>
+          <div>
+            <label className={labelClass}>Send to</label>
+            <select
+              name="emailRecipient"
+              value={emailRecipient}
+              onChange={(e) => setEmailRecipient(e.target.value as AutomationEmailRecipient)}
+              className={inputClass}
+            >
+              {EMAIL_RECIPIENTS.map((r) => (
+                <option key={r} value={r}>
+                  {EMAIL_RECIPIENT_LABEL[r]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-zinc-500">
+              {emailRecipient === "CONTACT"
+                ? "Skipped (and logged as failed below) if this event has no linked contact, or the contact has no email on file."
+                : "Sent to your own account email."}
+            </p>
+          </div>
           <div>
             <label className={labelClass}>Subject</label>
             <input
               name="emailSubject"
+              required={emailRecipient === "CONTACT"}
               defaultValue={defaultValues?.emailSubject ?? ""}
-              placeholder={`Automation: ${defaultValues?.name ?? "..."}`}
+              placeholder={
+                emailRecipient === "CONTACT" ? "Your call is confirmed" : `Automation: ${defaultValues?.name ?? "..."}`
+              }
               className={inputClass}
             />
           </div>
@@ -128,10 +162,20 @@ export function AutomationForm({
             <textarea
               name="emailBody"
               rows={3}
+              required={emailRecipient === "CONTACT"}
               defaultValue={defaultValues?.emailBody ?? ""}
-              placeholder="Optional extra message — the event details are appended automatically."
+              placeholder={
+                emailRecipient === "CONTACT"
+                  ? "Hi {{name}}, ..."
+                  : "Optional extra message — the event details are appended automatically."
+              }
               className={inputClass}
             />
+            <p className="mt-1 text-xs text-zinc-500">
+              {emailRecipient === "CONTACT"
+                ? "This is the entire message the contact sees — write it as you would to them. You can use {{name}} and {{email}}, plus {{date}} for triggers that involve one (like a booked appointment)."
+                : "The event's own description is appended automatically below this."}
+            </p>
           </div>
         </div>
       )}

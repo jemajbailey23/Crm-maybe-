@@ -18,8 +18,9 @@ export default async function AutomationsPage() {
             Automations
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Automatically create tasks, send yourself emails, or call a webhook
-            when something happens in the CRM.
+            Automatically create tasks, send an email to yourself or the
+            contact involved, or call a webhook when something happens in
+            the CRM.
           </p>
         </div>
         <Link

@@ -81,24 +81,3 @@ export async function sendAutomationEmail(to: string, subject: string, body: str
   });
 }
 
-export async function sendBookingConfirmation(
-  to: string,
-  booking: { name: string; startsAt: Date; timezone: string }
-) {
-  const when = booking.startsAt.toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: booking.timezone,
-    timeZoneName: "short",
-  });
-  await send({
-    to,
-    subject: "Your call is confirmed",
-    text: `Hi ${booking.name}, your call is confirmed for ${when}. See you then!`,
-    html: `<p>Hi ${booking.name},</p><p>Your call is confirmed for <strong>${when}</strong>. See you then!</p>`,
-  });
-}

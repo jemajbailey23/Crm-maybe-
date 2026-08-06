@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { AutomationActionType, AutomationTrigger } from "@prisma/client";
-import { TRIGGERS, ACTION_TYPES } from "./meta";
+import { AutomationActionType, AutomationEmailRecipient, AutomationTrigger } from "@prisma/client";
+import { TRIGGERS, ACTION_TYPES, EMAIL_RECIPIENTS } from "./meta";
 
 export type AutomationFormState = { error?: string };
 
@@ -18,6 +18,7 @@ function parseFields(formData: FormData) {
   const triggerRaw = String(formData.get("trigger") ?? "").trim();
   const actionTypeRaw = String(formData.get("actionType") ?? "").trim();
   const taskDueInDaysRaw = String(formData.get("taskDueInDays") ?? "").trim();
+  const emailRecipientRaw = String(formData.get("emailRecipient") ?? "").trim();
 
   return {
     name,
@@ -29,6 +30,9 @@ function parseFields(formData: FormData) {
       : null,
     taskTitle: str(formData, "taskTitle"),
     taskDueInDays: taskDueInDaysRaw ? Math.max(0, Math.round(Number(taskDueInDaysRaw))) : null,
+    emailRecipient: EMAIL_RECIPIENTS.includes(emailRecipientRaw as AutomationEmailRecipient)
+      ? (emailRecipientRaw as AutomationEmailRecipient)
+      : ("OWNER" as AutomationEmailRecipient),
     emailSubject: str(formData, "emailSubject"),
     emailBody: str(formData, "emailBody"),
     webhookUrl: str(formData, "webhookUrl"),
@@ -46,6 +50,13 @@ export async function createAutomationRule(
   if (fields.actionType === "WEBHOOK" && !fields.webhookUrl) {
     return { error: "Enter a webhook URL." };
   }
+  if (
+    fields.actionType === "SEND_EMAIL" &&
+    fields.emailRecipient === "CONTACT" &&
+    (!fields.emailSubject || !fields.emailBody)
+  ) {
+    return { error: "Write a subject and message — the contact will see these directly." };
+  }
 
   const rule = await prisma.automationRule.create({
     data: {
@@ -54,6 +65,7 @@ export async function createAutomationRule(
       actionType: fields.actionType,
       taskTitle: fields.taskTitle,
       taskDueInDays: fields.taskDueInDays,
+      emailRecipient: fields.emailRecipient,
       emailSubject: fields.emailSubject,
       emailBody: fields.emailBody,
       webhookUrl: fields.webhookUrl,
@@ -76,6 +88,13 @@ export async function updateAutomationRule(
   if (fields.actionType === "WEBHOOK" && !fields.webhookUrl) {
     return { error: "Enter a webhook URL." };
   }
+  if (
+    fields.actionType === "SEND_EMAIL" &&
+    fields.emailRecipient === "CONTACT" &&
+    (!fields.emailSubject || !fields.emailBody)
+  ) {
+    return { error: "Write a subject and message — the contact will see these directly." };
+  }
 
   await prisma.automationRule.update({
     where: { id: ruleId },
@@ -85,6 +104,7 @@ export async function updateAutomationRule(
       actionType: fields.actionType,
       taskTitle: fields.taskTitle,
       taskDueInDays: fields.taskDueInDays,
+      emailRecipient: fields.emailRecipient,
       emailSubject: fields.emailSubject,
       emailBody: fields.emailBody,
       webhookUrl: fields.webhookUrl,

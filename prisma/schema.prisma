@@ -478,6 +478,15 @@ enum AutomationActionType {
   WEBHOOK
 }
 
+// Who a SEND_EMAIL action's message goes to. OWNER (the default, and the
+// only option that previously existed) notifies the CRM owner. CONTACT
+// sends to the contact linked to the triggering event instead — e.g. a
+// booking confirmation the client themselves receives.
+enum AutomationEmailRecipient {
+  OWNER
+  CONTACT
+}
+
 enum AutomationRunStatus {
   SUCCESS
   FAILED
@@ -497,8 +506,9 @@ model AutomationRule {
   taskDueInDays Int?
 
   // SEND_EMAIL config
-  emailSubject String?
-  emailBody    String?
+  emailRecipient AutomationEmailRecipient @default(OWNER)
+  emailSubject   String?
+  emailBody      String?
 
   // WEBHOOK config
   webhookUrl String?

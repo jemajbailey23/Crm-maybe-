@@ -1,4 +1,4 @@
-import type { AutomationActionType, AutomationTrigger } from "@prisma/client";
+import type { AutomationActionType, AutomationEmailRecipient, AutomationTrigger } from "@prisma/client";
 
 export const TRIGGERS: AutomationTrigger[] = [
   "LEAD_CREATED",
@@ -40,14 +40,22 @@ export const ACTION_TYPES: AutomationActionType[] = ["CREATE_TASK", "SEND_EMAIL"
 
 export const ACTION_LABEL: Record<AutomationActionType, string> = {
   CREATE_TASK: "Create a task",
-  SEND_EMAIL: "Send me an email",
+  SEND_EMAIL: "Send an email",
   WEBHOOK: "Call a webhook URL",
+};
+
+export const EMAIL_RECIPIENTS: AutomationEmailRecipient[] = ["OWNER", "CONTACT"];
+
+export const EMAIL_RECIPIENT_LABEL: Record<AutomationEmailRecipient, string> = {
+  OWNER: "Me (the business owner)",
+  CONTACT: "The contact linked to this event",
 };
 
 export function actionSummary(rule: {
   actionType: AutomationActionType;
   taskTitle: string | null;
   taskDueInDays: number | null;
+  emailRecipient: AutomationEmailRecipient;
   emailSubject: string | null;
   webhookUrl: string | null;
 }) {
@@ -55,7 +63,8 @@ export function actionSummary(rule: {
     return `Create task${rule.taskTitle ? ` "${rule.taskTitle}"` : ""}, due in ${rule.taskDueInDays ?? 1} day(s)`;
   }
   if (rule.actionType === "SEND_EMAIL") {
-    return `Email you${rule.emailSubject ? `: "${rule.emailSubject}"` : ""}`;
+    const who = rule.emailRecipient === "CONTACT" ? "the contact" : "you";
+    return `Email ${who}${rule.emailSubject ? `: "${rule.emailSubject}"` : ""}`;
   }
   return `POST to ${rule.webhookUrl || "(no URL set)"}`;
 }
