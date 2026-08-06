@@ -88,20 +88,27 @@ export async function createBooking(
     },
   });
 
-  await Promise.all([
-    sendBookingOwnerNotification(owner.email, {
-      name,
-      email,
-      startsAt,
-      notes: notes || null,
-      timezone: owner.bookingTimezone,
-    }),
-    sendBookingConfirmation(email, {
-      name,
-      startsAt,
-      timezone: visitorTimezone || owner.bookingTimezone,
-    }),
-  ]);
+  // The booking itself is already saved at this point — a broken email
+  // provider (bad Gmail credentials, etc.) should never take down the
+  // booking confirmation for the visitor. Log and move on.
+  try {
+    await Promise.all([
+      sendBookingOwnerNotification(owner.email, {
+        name,
+        email,
+        startsAt,
+        notes: notes || null,
+        timezone: owner.bookingTimezone,
+      }),
+      sendBookingConfirmation(email, {
+        name,
+        startsAt,
+        timezone: visitorTimezone || owner.bookingTimezone,
+      }),
+    ]);
+  } catch (err) {
+    console.error("[booking] failed to send confirmation email(s)", err);
+  }
 
   revalidatePath("/booking");
   revalidatePath("/book");
