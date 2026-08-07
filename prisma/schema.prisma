@@ -40,6 +40,9 @@ model User {
   passwordResetTokens PasswordResetToken[]
   goals               Goal[]
   assignedDeals       Deal[]
+  ownedArticles       KnowledgeArticle[]
+  articleRevisions    KnowledgeArticleRevision[]
+  aiQueryLogs         AiQueryLog[]
 }
 
 model PasswordResetToken {
@@ -161,6 +164,9 @@ model Contact {
   links       ImportantLink[]
   credentials Credential[]
   nextActions NextBestActionItem[]
+
+  knowledgeArticles KnowledgeArticle[]
+  aiQueryLogs       AiQueryLog[]
 }
 
 model Service {
@@ -535,13 +541,109 @@ enum KnowledgeCategory {
   BUSINESS_RESOURCES
 }
 
+enum KnowledgeArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// "BVD Internal" is never client-scoped. "Client Private"/"Client Shared"
+// both require a clientId; the only difference is intended audience within
+// the client relationship (private = internal-facing notes about a client,
+// shared = content the client themselves may be shown) — both are equally
+// excluded from every other client's retrieval. "Public" needs no clientId
+// and is retrievable by any authenticated client.
+enum KnowledgeArticleVisibility {
+  BVD_INTERNAL
+  CLIENT_PRIVATE
+  CLIENT_SHARED
+  PUBLIC
+}
+
 model KnowledgeArticle {
-  id        String            @id @default(cuid())
-  title     String
-  category  KnowledgeCategory
-  content   String
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  id      String @id @default(cuid())
+  title   String
+  slug    String @unique
+  summary String @default("")
+  content String
+
+  category KnowledgeCategory
+  tags     String? // comma-separated, same convention as Contact.tags
+
+  status     KnowledgeArticleStatus     @default(DRAFT)
+  visibility KnowledgeArticleVisibility @default(BVD_INTERNAL)
+
+  // Required when visibility is CLIENT_PRIVATE/CLIENT_SHARED, must be null
+  // for BVD_INTERNAL/PUBLIC — enforced in code (see knowledge/actions.ts),
+  // not at the DB level, since Prisma has no conditional-required columns.
+  client   Contact? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+
+  // Draft/Archived articles and aiEnabled=false articles are never eligible
+  // for AI retrieval regardless of this flag — see knowledge-access.ts.
+  aiEnabled Boolean @default(false)
+
+  reviewDate  DateTime?
+  publishedAt DateTime?
+  archivedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  revisions KnowledgeArticleRevision[]
+
+  @@index([status, visibility])
+  @@index([clientId])
+  @@index([category])
+}
+
+// Lightweight version history: one row per meaningful edit (title/content/
+// summary change), snapshotted before the update is applied. Intentionally
+// simple — no diffing, no restore-UI beyond "view" for v1, per the spec's
+// explicit "do not let this delay essential functionality."
+model KnowledgeArticleRevision {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  title   String
+  summary String
+  content String
+
+  editedBy   User?   @relation(fields: [editedById], references: [id], onDelete: SetNull)
+  editedById String?
+
+  article   KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+
+  @@index([articleId])
+}
+
+// Audit trail for AI Assistant queries that could touch knowledge-article
+// content, per the spec's logging requirement. Deliberately stores article
+// IDs (not content) and a truncated response — never secrets.
+model AiQueryLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+
+  // The Contact (status=CLIENT) whose context the query was scoped to, if
+  // any. Null means the query ran under BVD-internal/admin scope.
+  clientContact   Contact? @relation(fields: [clientContactId], references: [id], onDelete: SetNull)
+  clientContactId String?
+
+  query               String
+  articleIdsRetrieved String[] @default([])
+  permissionScope     String // e.g. "bvd_admin" | "client:<id>"
+  response            String
+  error               String?
+
+  @@index([userId])
+  @@index([clientContactId])
 }
 
 enum GoalMetric {

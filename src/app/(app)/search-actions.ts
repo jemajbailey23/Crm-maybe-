@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { CATEGORY_LABEL } from "./knowledge/categories";
+import { articleListWhere } from "@/lib/knowledge-access";
 
 export type SearchResult = {
   id: string;
@@ -79,10 +80,22 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       take: 5,
     }),
     prisma.knowledgeArticle.findMany({
+      // Routed through the same permission gate the KB list/detail/AI
+      // retrieval queries use — a no-op for the current single BVD-admin
+      // user (see knowledge-access.ts), but keeps global search from ever
+      // becoming the one place that bypasses client separation once a
+      // client-facing viewer exists.
       where: {
-        OR: [
-          { title: { contains: q, mode: "insensitive" } },
-          { content: { contains: q, mode: "insensitive" } },
+        AND: [
+          articleListWhere({ role: "bvd_admin" }),
+          {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { summary: { contains: q, mode: "insensitive" } },
+              { tags: { contains: q, mode: "insensitive" } },
+              { content: { contains: q, mode: "insensitive" } },
+            ],
+          },
         ],
       },
       take: 5,

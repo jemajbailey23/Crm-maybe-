@@ -1,8 +1,30 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
+import { searchKnowledgeArticles, type KnowledgeViewer } from "@/lib/knowledge-access";
 
 export const TOOLS: Anthropic.Tool[] = [
+  {
+    name: "search_knowledge_base",
+    description:
+      "Search Bailey Ventures Digital's internal knowledge base (sales scripts, discovery questions, SOPs, proposal/email templates, prompt library, objection handling, business resources) for approved, published, AI-enabled articles relevant to the question. Always try this before answering from general knowledge when the question could be covered by company policy, a script, an SOP, or a template. Only authorized articles the system has already permission-filtered are ever returned — never invent article content beyond what's returned.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "The topic or question to search for, e.g. 'cold call opener' or 'refund policy'.",
+        },
+        clientName: {
+          type: "string",
+          description:
+            "Name or business name of the specific client this question is about, if any. Set this whenever the conversation concerns one client, so that client's approved client-specific articles (and only that client's) are considered — never guess or reuse a different client's name.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
   {
     name: "get_leads_needing_followup",
     description:
@@ -208,6 +230,74 @@ async function findBusinessesWithoutWebsite() {
   return { businesses: contacts };
 }
 
+export type KnowledgeSearchOutcome = {
+  found: boolean;
+  message?: string;
+  clientContext?: string | null;
+  clientContextId?: string | null;
+  articles?: { id: string; title: string; summary: string; category: string; content: string }[];
+};
+
+async function searchKnowledgeBase(
+  query: string,
+  clientName: string | undefined,
+  viewer: KnowledgeViewer
+): Promise<KnowledgeSearchOutcome> {
+  let clientContextId: string | undefined;
+  let clientContextName: string | undefined;
+
+  if (clientName?.trim()) {
+    const client = await prisma.contact.findFirst({
+      where: {
+        status: "CLIENT",
+        OR: [
+          { firstName: { contains: clientName, mode: "insensitive" } },
+          { lastName: { contains: clientName, mode: "insensitive" } },
+          { businessName: { contains: clientName, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, firstName: true, lastName: true, businessName: true },
+    });
+    if (client) {
+      clientContextId = client.id;
+      clientContextName = client.businessName || `${client.firstName} ${client.lastName}`;
+    }
+  }
+
+  const articles = await searchKnowledgeArticles({
+    viewer,
+    clientContextId,
+    forAi: true,
+    query,
+    limit: 5,
+  });
+
+  if (articles.length === 0) {
+    return {
+      found: false,
+      clientContext: clientContextName ?? null,
+      clientContextId: clientContextId ?? null,
+      message:
+        "No approved, Published, AI-enabled knowledge article matched this query" +
+        (clientContextName ? ` for ${clientContextName}` : "") +
+        ". Do not invent an answer — tell the user no approved knowledge covers this and suggest a human review or that an article be added.",
+    };
+  }
+
+  return {
+    found: true,
+    clientContext: clientContextName ?? null,
+    clientContextId: clientContextId ?? null,
+    articles: articles.map((a) => ({
+      id: a.id,
+      title: a.title,
+      summary: a.summary,
+      category: a.category,
+      content: a.content,
+    })),
+  };
+}
+
 async function getHighestValueClients(limit: number) {
   const clients = await prisma.contact.findMany({
     where: { status: "CLIENT" },
@@ -231,8 +321,18 @@ async function getHighestValueClients(limit: number) {
   return { clients: ranked };
 }
 
-export async function executeTool(name: string, input: Record<string, unknown>) {
+export async function executeTool(
+  name: string,
+  input: Record<string, unknown>,
+  ctx: { viewer: KnowledgeViewer }
+) {
   switch (name) {
+    case "search_knowledge_base":
+      return searchKnowledgeBase(
+        String(input.query ?? ""),
+        input.clientName ? String(input.clientName) : undefined,
+        ctx.viewer
+      );
     case "get_leads_needing_followup":
       return getLeadsNeedingFollowup();
     case "get_overdue_invoices":

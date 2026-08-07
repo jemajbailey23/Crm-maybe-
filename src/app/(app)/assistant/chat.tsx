@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { askAssistant, type ChatMessage } from "./actions";
+import { askAssistant, type ChatMessage, type ArticleSource } from "./actions";
 
 const EXAMPLE_PROMPTS = [
   "Show leads needing follow-up",
@@ -15,7 +16,7 @@ const EXAMPLE_PROMPTS = [
   "Suggest today's priorities",
 ];
 
-type DisplayMessage = ChatMessage & { id: string; error?: boolean };
+type DisplayMessage = ChatMessage & { id: string; error?: boolean; sources?: ArticleSource[] };
 
 export function AssistantChat() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -48,6 +49,7 @@ export function AssistantChat() {
           role: "assistant",
           content: result.error ?? result.reply,
           error: !!result.error,
+          sources: result.sources,
         },
       ]);
       scrollToBottom();
@@ -80,7 +82,7 @@ export function AssistantChat() {
               className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-4 py-2.5 text-sm ${
+                className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
                   m.role === "user"
                     ? "bg-indigo-500 text-white"
                     : m.error
@@ -88,7 +90,21 @@ export function AssistantChat() {
                       : "border border-zinc-800 bg-zinc-900 text-zinc-200"
                 }`}
               >
-                {m.content}
+                <p className="whitespace-pre-wrap">{m.content}</p>
+                {m.sources && m.sources.length > 0 && (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-zinc-800 pt-2">
+                    <span className="text-xs text-zinc-500">Sources:</span>
+                    {m.sources.map((s) => (
+                      <Link
+                        key={s.id}
+                        href={`/knowledge/${s.id}`}
+                        className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-indigo-300 transition-colors hover:bg-zinc-700"
+                      >
+                        {s.title}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))

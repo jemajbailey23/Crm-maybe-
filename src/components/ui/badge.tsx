@@ -241,6 +241,54 @@ export function RecurrenceBadge({ recurrence }: { recurrence: string }) {
   return <Badge variant="violet">{RECURRENCE_LABEL[recurrence] ?? recurrence}</Badge>;
 }
 
+const KNOWLEDGE_STATUS_VARIANT: Record<string, BadgeVariant> = {
+  DRAFT: "default",
+  PUBLISHED: "emerald",
+  ARCHIVED: "red",
+};
+
+const KNOWLEDGE_STATUS_LABEL: Record<string, string> = {
+  DRAFT: "Draft",
+  PUBLISHED: "Published",
+  ARCHIVED: "Archived",
+};
+
+export function KnowledgeStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={KNOWLEDGE_STATUS_VARIANT[status] ?? "default"}>
+      {KNOWLEDGE_STATUS_LABEL[status] ?? status}
+    </Badge>
+  );
+}
+
+const KNOWLEDGE_VISIBILITY_VARIANT: Record<string, BadgeVariant> = {
+  BVD_INTERNAL: "violet",
+  CLIENT_PRIVATE: "amber",
+  CLIENT_SHARED: "blue",
+  PUBLIC: "emerald",
+};
+
+const KNOWLEDGE_VISIBILITY_LABEL: Record<string, string> = {
+  BVD_INTERNAL: "BVD Internal",
+  CLIENT_PRIVATE: "Client Private",
+  CLIENT_SHARED: "Client Shared",
+  PUBLIC: "Public",
+};
+
+export function KnowledgeVisibilityBadge({ visibility }: { visibility: string }) {
+  return (
+    <Badge variant={KNOWLEDGE_VISIBILITY_VARIANT[visibility] ?? "default"}>
+      {KNOWLEDGE_VISIBILITY_LABEL[visibility] ?? visibility}
+    </Badge>
+  );
+}
+
+export function AiEnabledBadge({ enabled }: { enabled: boolean }) {
+  return (
+    <Badge variant={enabled ? "emerald" : "default"}>{enabled ? "AI enabled" : "AI disabled"}</Badge>
+  );
+}
+
 export function LabelChips({ labels }: { labels: string | null | undefined }) {
   const items = (labels ?? "")
     .split(",")
