@@ -6,8 +6,19 @@ import { SearchBox } from "@/components/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { deleteContact } from "./actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { BulkSelectProvider, RowCheckbox, SelectAllCheckbox } from "@/components/ui/bulk-select";
+import { ContactsBulkBar } from "./contacts-bulk-bar";
 
 const PAGE_SIZE = 50;
+
+function exportQuery(params: Record<string, string | undefined>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) search.set(key, value);
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
 
 export default async function ContactsPage({
   searchParams,
@@ -59,7 +70,13 @@ export default async function ContactsPage({
                 : "Everyone you're doing business with."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/contacts/export${exportQuery({ q, status })}`}
+            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+          >
+            Export CSV
+          </Link>
           <Link
             href="/contacts/import"
             className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
@@ -79,6 +96,9 @@ export default async function ContactsPage({
         <SearchBox key={q ?? ""} placeholder="Search contacts…" />
       </Suspense>
 
+      <BulkSelectProvider>
+        <ContactsBulkBar />
+        <div className="mt-3" />
       <div className="animate-slide-up overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/50">
         {contacts.length === 0 ? (
           <p className="p-6 text-sm text-zinc-500">
@@ -98,6 +118,9 @@ export default async function ContactsPage({
           <table className="min-w-full divide-y divide-zinc-800">
             <thead className="bg-zinc-900/60">
               <tr>
+                <th className="w-10 px-4 py-2.5">
+                  <SelectAllCheckbox ids={contacts.map((c) => c.id)} />
+                </th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Name
                 </th>
@@ -116,6 +139,9 @@ export default async function ContactsPage({
             <tbody className="divide-y divide-zinc-800/60">
               {contacts.map((contact) => (
                 <tr key={contact.id} className="group transition-colors hover:bg-zinc-800/30">
+                  <td className="px-4 py-3">
+                    <RowCheckbox id={contact.id} label={`${contact.firstName} ${contact.lastName}`} />
+                  </td>
                   <td className="px-4 py-3 text-sm">
                     <Link
                       href={`/contacts/${contact.id}`}
@@ -156,6 +182,7 @@ export default async function ContactsPage({
           searchParams={{ q, status }}
         />
       </div>
+      </BulkSelectProvider>
     </div>
   );
 }

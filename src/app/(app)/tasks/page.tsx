@@ -5,6 +5,8 @@ import { startOfDayInZone, endOfDayInZone } from "@/lib/timezone";
 import { TaskQuickForm } from "./task-quick-form";
 import { TaskRow, type TaskRowData } from "./task-row";
 import { EmptyState } from "@/components/ui/empty-state";
+import { BulkSelectProvider, SelectAllCheckbox } from "@/components/ui/bulk-select";
+import { TasksBulkBar } from "./tasks-bulk-bar";
 
 export const dynamic = "force-dynamic";
 
@@ -108,12 +110,20 @@ export default async function TasksPage({
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">Tasks</h1>
           <p className="mt-1 text-sm text-zinc-500">Follow-ups across every contact, deal, and project.</p>
         </div>
-        <Link
-          href="/tasks/new"
-          className="shrink-0 rounded-lg border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
-        >
-          Full task form
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/tasks/export?view=${view}`}
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+          >
+            Export CSV
+          </Link>
+          <Link
+            href="/tasks/new"
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+          >
+            Full task form
+          </Link>
+        </div>
       </div>
 
       {tasks.length > 0 && (
@@ -162,50 +172,61 @@ export default async function TasksPage({
         })}
       </div>
 
-      <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-        {isGrouped && groups ? (
-          groups.length === 0 ? (
+      <BulkSelectProvider>
+        <TasksBulkBar exportHref={`/tasks/export?view=${view}`} />
+        <div className="mt-3" />
+        <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+          {isGrouped && groups ? (
+            groups.length === 0 ? (
+              <EmptyState message={emptyMessage(view)} />
+            ) : (
+              <div className="space-y-6">
+                {groups.map((group) => (
+                  <div key={group.key}>
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-zinc-100">
+                      {group.href ? (
+                        <Link href={group.href} className="hover:text-indigo-400">
+                          {group.label}
+                        </Link>
+                      ) : (
+                        group.label
+                      )}
+                      <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+                        {group.tasks.length}
+                      </span>
+                    </h3>
+                    <ul className="divide-y divide-zinc-800/60">
+                      {group.tasks.map((task) => (
+                        <TaskRow
+                          key={task.id}
+                          task={task}
+                          hideRelation={view === "by-client" ? "contact" : view === "by-project" ? "project" : "deal"}
+                          now={now}
+                          selectable
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : activeTasks.length === 0 ? (
             <EmptyState message={emptyMessage(view)} />
           ) : (
-            <div className="space-y-6">
-              {groups.map((group) => (
-                <div key={group.key}>
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-zinc-100">
-                    {group.href ? (
-                      <Link href={group.href} className="hover:text-indigo-400">
-                        {group.label}
-                      </Link>
-                    ) : (
-                      group.label
-                    )}
-                    <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
-                      {group.tasks.length}
-                    </span>
-                  </h3>
-                  <ul className="divide-y divide-zinc-800/60">
-                    {group.tasks.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        hideRelation={view === "by-client" ? "contact" : view === "by-project" ? "project" : "deal"}
-                        now={now}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )
-        ) : activeTasks.length === 0 ? (
-          <EmptyState message={emptyMessage(view)} />
-        ) : (
-          <ul className="divide-y divide-zinc-800/60">
-            {activeTasks.map((task) => (
-              <TaskRow key={task.id} task={task} now={now} />
-            ))}
-          </ul>
-        )}
-      </div>
+            <>
+              <div className="mb-2 flex items-center gap-2 border-b border-zinc-800 pb-2">
+                <SelectAllCheckbox ids={activeTasks.map((t) => t.id)} />
+                <span className="text-xs text-zinc-500">Select all</span>
+              </div>
+              <ul className="divide-y divide-zinc-800/60">
+                {activeTasks.map((task) => (
+                  <TaskRow key={task.id} task={task} now={now} selectable />
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      </BulkSelectProvider>
     </div>
   );
 }

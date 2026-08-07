@@ -8,6 +8,15 @@ import { DealFilters } from "./deal-filters";
 import { getStageLabels, stageOptions, STAGE_ORDER } from "@/lib/pipeline-stages";
 import { getDealWarnings, daysInStage } from "./deal-rules";
 
+function exportQuery(params: Record<string, string | undefined>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) search.set(key, value);
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
 function formatCurrency(value: number | null) {
   if (!value) return null;
   return new Intl.NumberFormat("en-US", {
@@ -163,12 +172,20 @@ export default async function DealsPage({
             contact through close.
           </p>
         </div>
-        <Link
-          href="/deals/new"
-          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400"
-        >
-          New deal
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/deals/export${exportQuery({ q, stage, leadSource, service, owner, overdue, stale, closeFrom, closeTo })}`}
+            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+          >
+            Export CSV
+          </Link>
+          <Link
+            href="/deals/new"
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400"
+          >
+            New deal
+          </Link>
+        </div>
       </div>
 
       <Suspense>

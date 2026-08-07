@@ -3,6 +3,7 @@ import { TaskStatusSelect } from "./task-status-select";
 import { deleteTask } from "./actions";
 import { PriorityBadge, RecurrenceBadge, LabelChips } from "@/components/ui/badge";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { RowCheckbox } from "@/components/ui/bulk-select";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
@@ -29,15 +30,26 @@ export function TaskRow({
   task,
   hideRelation,
   now,
+  selectable = false,
 }: {
   task: TaskRowData;
   hideRelation?: "contact" | "company" | "deal" | "project" | "invoice";
   now?: Date;
+  // Only set this from a page that wraps its list in a BulkSelectProvider
+  // (currently just /tasks) — TaskRow is also reused, unwrapped, on
+  // Contact/Deal/Project/Company detail pages.
+  selectable?: boolean;
 }) {
   const overdue = !!task.dueDate && now && task.dueDate < now && task.status !== "COMPLETED" && task.status !== "CANCELLED";
 
   return (
-    <li className="flex flex-col gap-2 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <li className="flex items-start gap-2 py-2.5 text-sm sm:items-center">
+      {selectable && (
+        <div className="pt-0.5 sm:pt-0">
+          <RowCheckbox id={task.id} label={task.title} />
+        </div>
+      )}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <Link href={`/tasks/${task.id}`} className="font-medium text-zinc-200 hover:text-indigo-400">
@@ -108,6 +120,7 @@ export function TaskRow({
             Remove
           </ConfirmSubmitButton>
         </form>
+      </div>
       </div>
     </li>
   );

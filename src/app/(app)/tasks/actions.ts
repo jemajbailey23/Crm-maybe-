@@ -342,6 +342,40 @@ export async function logTrackedTime(taskId: string, minutes: number): Promise<T
   return {};
 }
 
+// ---- Bulk actions (Tasks list multi-select)
+
+export async function bulkDeleteTasks(ids: string[]): Promise<TaskActionResult> {
+  if (ids.length === 0) return { error: "No tasks selected." };
+  await prisma.task.deleteMany({ where: { id: { in: ids } } });
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  return {};
+}
+
+export async function bulkCompleteTasks(ids: string[]): Promise<TaskActionResult> {
+  if (ids.length === 0) return { error: "No tasks selected." };
+
+  const toComplete = await prisma.task.findMany({
+    where: { id: { in: ids }, status: { not: "COMPLETED" } },
+    select: { id: true, recurrence: true },
+  });
+
+  await prisma.task.updateMany({
+    where: { id: { in: toComplete.map((t) => t.id) } },
+    data: { status: "COMPLETED", progress: 100, completedAt: new Date() },
+  });
+
+  // Recurring tasks each need their own spawn-guard transaction, so handle
+  // those individually rather than in the bulk updateMany above.
+  for (const task of toComplete) {
+    if (task.recurrence !== "NONE") await maybeSpawnRecurrence(task.id);
+  }
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  return {};
+}
+
 // ---- Create-from-record helper used by the Next Best Action panel: builds
 // a task directly from a recommendation's context in one click, no form.
 export async function createTaskFromNextAction(input: {

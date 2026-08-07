@@ -5,8 +5,19 @@ import { SearchBox } from "@/components/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { deleteCompany } from "./actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { BulkSelectProvider, RowCheckbox, SelectAllCheckbox } from "@/components/ui/bulk-select";
+import { CompaniesBulkBar } from "./companies-bulk-bar";
 
 const PAGE_SIZE = 50;
+
+function exportQuery(params: Record<string, string | undefined>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) search.set(key, value);
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
 
 export default async function CompaniesPage({
   searchParams,
@@ -47,18 +58,29 @@ export default async function CompaniesPage({
             Businesses you work with or sell to.
           </p>
         </div>
-        <Link
-          href="/companies/new"
-          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400"
-        >
-          New company
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/companies/export${exportQuery({ q })}`}
+            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+          >
+            Export CSV
+          </Link>
+          <Link
+            href="/companies/new"
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400"
+          >
+            New company
+          </Link>
+        </div>
       </div>
 
       <Suspense>
         <SearchBox key={q ?? ""} placeholder="Search companies…" />
       </Suspense>
 
+      <BulkSelectProvider>
+        <CompaniesBulkBar />
+        <div className="mt-3" />
       <div className="animate-slide-up overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/50">
         {companies.length === 0 ? (
           <p className="p-6 text-sm text-zinc-500">
@@ -78,6 +100,9 @@ export default async function CompaniesPage({
           <table className="min-w-full divide-y divide-zinc-800">
             <thead className="bg-zinc-900/60">
               <tr>
+                <th className="w-10 px-4 py-2.5">
+                  <SelectAllCheckbox ids={companies.map((c) => c.id)} />
+                </th>
                 <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-zinc-500">
                   Name
                 </th>
@@ -96,6 +121,9 @@ export default async function CompaniesPage({
             <tbody className="divide-y divide-zinc-800/60">
               {companies.map((company) => (
                 <tr key={company.id} className="group transition-colors hover:bg-zinc-800/30">
+                  <td className="px-4 py-3">
+                    <RowCheckbox id={company.id} label={company.name} />
+                  </td>
                   <td className="px-4 py-3 text-sm">
                     <Link
                       href={`/companies/${company.id}`}
@@ -136,6 +164,7 @@ export default async function CompaniesPage({
           searchParams={{ q }}
         />
       </div>
+      </BulkSelectProvider>
     </div>
   );
 }
