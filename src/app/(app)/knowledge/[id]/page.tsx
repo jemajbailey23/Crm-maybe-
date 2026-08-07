@@ -8,10 +8,18 @@ import { ArticleContent } from "../article-content";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { CopyLinkButton } from "@/components/copy-link-button";
 import { KnowledgeStatusBadge, KnowledgeVisibilityBadge, AiEnabledBadge, LabelChips } from "@/components/ui/badge";
+import { AttachmentUploadForm } from "../../contacts/attachment-upload-form";
+import { deleteAttachment } from "../../contacts/attachments-actions";
 
 function formatDate(date: Date | null) {
   if (!date) return null;
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDateTime(date: Date) {
@@ -34,6 +42,7 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
       client: { select: { id: true, firstName: true, lastName: true, businessName: true } },
       owner: { select: { id: true, name: true } },
       revisions: { orderBy: { createdAt: "desc" }, take: 10, include: { editedBy: { select: { name: true } } } },
+      attachments: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!article) notFound();
@@ -157,6 +166,48 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
       <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-6">
         <ArticleContent content={article.content} />
       </div>
+
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">
+          Files{article.attachments.length > 0 && ` (${article.attachments.length})`}
+        </h2>
+        <p className="mb-4 text-xs text-zinc-500">
+          Attach reference files (PDFs, screenshots, sheets) for internal use. Attachments are not sent to
+          the AI Assistant — only the article&rsquo;s text content is used to answer questions.
+        </p>
+        <div className="mb-4">
+          <AttachmentUploadForm owner={{ articleId: article.id }} />
+        </div>
+        {article.attachments.length === 0 ? (
+          <p className="text-sm text-zinc-500">No files attached yet.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-800/60">
+            {article.attachments.map((file) => (
+              <li key={file.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <a
+                  href={file.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-0 truncate font-medium text-zinc-200 hover:text-indigo-400"
+                >
+                  {file.filename}
+                </a>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-xs text-zinc-500">{formatBytes(file.sizeBytes)}</span>
+                  <form action={deleteAttachment.bind(null, file.id)}>
+                    <ConfirmSubmitButton
+                      confirmMessage="Delete this file? This can't be undone."
+                      className="text-xs text-zinc-600 transition-colors hover:text-red-400"
+                    >
+                      Remove
+                    </ConfirmSubmitButton>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {article.revisions.length > 0 && (
         <details className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-6">
