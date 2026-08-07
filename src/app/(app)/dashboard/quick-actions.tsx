@@ -8,6 +8,7 @@ const SHORTCUTS = [
   { label: "Start Audit", href: "/deals/new?title=Growth+Audit" },
   { label: "Create Invoice", href: "/deals?stage=WON" },
   { label: "Schedule Meeting", href: "/book" },
+  { label: "New Task", href: "/tasks/new" },
 ];
 
 export function QuickActions() {

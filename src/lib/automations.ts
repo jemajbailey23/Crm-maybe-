@@ -40,7 +40,7 @@ export async function fireAutomationTrigger(
               dueDate: new Date(
                 Date.now() + (rule.taskDueInDays ?? 1) * 24 * 60 * 60 * 1000
               ),
-              notes: `Auto-created by automation "${rule.name}".`,
+              description: `Auto-created by automation "${rule.name}".`,
               contactId: context.contactId ?? null,
               assignedToId: owner?.id ?? null,
             },
@@ -118,7 +118,11 @@ export async function fireAutomationTrigger(
 
 export async function checkOverdueTasks() {
   const overdue = await prisma.task.findMany({
-    where: { status: "OPEN", dueDate: { lt: new Date() }, overdueNotified: false },
+    where: {
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
+      dueDate: { lt: new Date() },
+      overdueNotified: false,
+    },
     take: 20,
   });
 

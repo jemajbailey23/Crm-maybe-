@@ -117,7 +117,7 @@ async function getTodaysSummary() {
   const [newLeadsToday, tasksDue, meetingsToday, overdueTaskCount] = await Promise.all([
     prisma.contact.count({ where: { status: "LEAD", createdAt: { gte: start, lte: end } } }),
     prisma.task.findMany({
-      where: { status: "OPEN", dueDate: { lte: end } },
+      where: { status: { notIn: ["COMPLETED", "CANCELLED"] }, dueDate: { lte: end } },
       orderBy: { dueDate: "asc" },
       take: 20,
       select: { title: true, dueDate: true, priority: true },
@@ -127,7 +127,9 @@ async function getTodaysSummary() {
       orderBy: { startsAt: "asc" },
       select: { name: true, startsAt: true, email: true },
     }),
-    prisma.task.count({ where: { status: "OPEN", dueDate: { lt: start } } }),
+    prisma.task.count({
+      where: { status: { notIn: ["COMPLETED", "CANCELLED"] }, dueDate: { lt: start } },
+    }),
   ]);
 
   return { newLeadsToday, tasksDueOrOverdue: tasksDue, overdueTaskCount, meetingsToday };

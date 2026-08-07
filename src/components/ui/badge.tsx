@@ -63,10 +63,32 @@ export function DealStageBadge({ stage, label }: { stage: string; label?: string
   );
 }
 
+const TASK_STATUS_VARIANT: Record<string, BadgeVariant> = {
+  BACKLOG: "default",
+  READY: "default",
+  IN_PROGRESS: "blue",
+  WAITING: "amber",
+  BLOCKED: "red",
+  REVIEW: "violet",
+  COMPLETED: "emerald",
+  CANCELLED: "default",
+};
+
+const TASK_STATUS_LABEL: Record<string, string> = {
+  BACKLOG: "Backlog",
+  READY: "Ready",
+  IN_PROGRESS: "In Progress",
+  WAITING: "Waiting",
+  BLOCKED: "Blocked",
+  REVIEW: "Review",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
 export function TaskStatusBadge({ status }: { status: string }) {
   return (
-    <Badge variant={status === "DONE" ? "emerald" : "default"}>
-      {status === "DONE" ? "Done" : "Open"}
+    <Badge variant={TASK_STATUS_VARIANT[status] ?? "default"}>
+      {TASK_STATUS_LABEL[status] ?? status}
     </Badge>
   );
 }
@@ -104,13 +126,15 @@ export function ActivityTypeBadge({ type }: { type: string }) {
 const PRIORITY_VARIANT: Record<string, BadgeVariant> = {
   LOW: "default",
   MEDIUM: "blue",
-  HIGH: "red",
+  HIGH: "amber",
+  CRITICAL: "red",
 };
 
 const PRIORITY_LABEL: Record<string, string> = {
   LOW: "Low",
   MEDIUM: "Medium",
   HIGH: "High",
+  CRITICAL: "Critical",
 };
 
 export function PriorityBadge({ priority }: { priority: string }) {
@@ -209,6 +233,7 @@ const RECURRENCE_LABEL: Record<string, string> = {
   DAILY: "Repeats daily",
   WEEKLY: "Repeats weekly",
   MONTHLY: "Repeats monthly",
+  CUSTOM: "Repeats on a custom interval",
 };
 
 export function RecurrenceBadge({ recurrence }: { recurrence: string }) {

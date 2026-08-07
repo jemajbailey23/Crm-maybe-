@@ -7,12 +7,16 @@ const initialState: TaskFormState = {};
 
 export function TaskQuickForm({
   contactId,
+  companyId,
   dealId,
   projectId,
+  invoiceId,
 }: {
   contactId?: string;
+  companyId?: string;
   dealId?: string;
   projectId?: string;
+  invoiceId?: string;
 }) {
   const [state, formAction, pending] = useActionState(
     createTask,
@@ -22,8 +26,10 @@ export function TaskQuickForm({
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-2">
       {contactId && <input type="hidden" name="contactId" value={contactId} />}
+      {companyId && <input type="hidden" name="companyId" value={companyId} />}
       {dealId && <input type="hidden" name="dealId" value={dealId} />}
       {projectId && <input type="hidden" name="projectId" value={projectId} />}
+      {invoiceId && <input type="hidden" name="invoiceId" value={invoiceId} />}
       <div className="flex-1 min-w-[10rem]">
         <label className="block text-xs font-medium text-zinc-400">
           New task

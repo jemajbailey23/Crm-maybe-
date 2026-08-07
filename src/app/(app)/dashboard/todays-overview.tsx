@@ -2,7 +2,7 @@ import Link from "next/link";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PriorityBadge } from "@/components/ui/badge";
-import { toggleTaskStatus } from "../tasks/actions";
+import { TaskStatusSelect } from "../tasks/task-status-select";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
@@ -29,6 +29,9 @@ export function TodaysOverview({
   projectsOnHold,
   todaysTasks,
   startOfToday,
+  blockedTaskCount,
+  waitingTaskCount,
+  reviewTaskCount,
 }: {
   newLeadsToday: number;
   followUpsDue: number;
@@ -39,6 +42,9 @@ export function TodaysOverview({
   projectsOnHold: number;
   todaysTasks: TodaysTask[];
   startOfToday: Date;
+  blockedTaskCount: number;
+  waitingTaskCount: number;
+  reviewTaskCount: number;
 }) {
   return (
     <div>
@@ -48,7 +54,10 @@ export function TodaysOverview({
         <StatCard compact label="Follow-ups due" value={String(followUpsDue)} href="/tasks" />
         <StatCard compact label="Meetings today" value={String(meetingsScheduledToday)} href="/booking" />
         <StatCard compact label="Tasks due" value={String(openTaskCount)} href="/tasks" />
-        <StatCard compact label="Overdue tasks" value={String(overdueTaskCount)} href="/tasks?filter=overdue" />
+        <StatCard compact label="Overdue tasks" value={String(overdueTaskCount)} href="/tasks?view=overdue" />
+        <StatCard compact label="Blocked tasks" value={String(blockedTaskCount)} href="/tasks?view=blocked" />
+        <StatCard compact label="Waiting on client" value={String(waitingTaskCount)} href="/tasks?view=waiting" />
+        <StatCard compact label="Awaiting review" value={String(reviewTaskCount)} href="/tasks?view=review" />
         <StatCard compact label="Calls logged" value={String(callsScheduledToday)} />
         <StatCard compact label="Projects on hold" value={String(projectsOnHold)} href="/projects" />
       </div>
@@ -76,13 +85,6 @@ export function TodaysOverview({
           <ul className="divide-y divide-zinc-800/60">
             {todaysTasks.map((task) => (
               <li key={task.id} className="flex items-center gap-2.5 py-2.5 text-sm">
-                <form action={toggleTaskStatus.bind(null, task.id, task.status as "OPEN" | "DONE")}>
-                  <button
-                    type="submit"
-                    className="h-4 w-4 shrink-0 rounded border border-zinc-700 bg-zinc-900 transition-colors hover:border-zinc-600"
-                    aria-label="Complete task"
-                  />
-                </form>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <Link
@@ -101,6 +103,9 @@ export function TodaysOverview({
                     {task.deal && ` · ${task.deal.title}`}
                     {task.project && ` · ${task.project.name}`}
                   </p>
+                </div>
+                <div className="shrink-0">
+                  <TaskStatusSelect taskId={task.id} status={task.status} />
                 </div>
               </li>
             ))}

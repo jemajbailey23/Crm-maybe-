@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 import { ContactForm } from "../contact-form";
 import { updateContact, deleteContact } from "../actions";
-import { toggleTaskStatus, deleteTask } from "../../tasks/actions";
 import { deleteActivity } from "../../activities/actions";
 import { deleteAttachment } from "../attachments-actions";
 import { TaskQuickForm } from "../../tasks/task-quick-form";
+import { TaskRow } from "../../tasks/task-row";
 import { ActivityQuickForm } from "../../activities/activity-quick-form";
 import { AttachmentUploadForm } from "../attachment-upload-form";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
@@ -78,7 +78,10 @@ export default async function ContactDetailPage({
         company: true,
         deals: { orderBy: { createdAt: "desc" } },
         projects: { orderBy: { createdAt: "desc" } },
-        tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
+        tasks: {
+          orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+          include: { contact: true, company: true, deal: true, project: true, invoice: true },
+        },
         activities: { orderBy: { occurredAt: "desc" } },
         attachments: { orderBy: { createdAt: "desc" } },
         services: { orderBy: { createdAt: "desc" } },
@@ -104,7 +107,9 @@ export default async function ContactDetailPage({
   const updateContactWithId = updateContact.bind(null, contact.id);
   const deleteContactWithId = deleteContact.bind(null, contact.id);
   const paymentStatus = derivePaymentStatus(contact.invoices);
-  const openTaskCount = contact.tasks.filter((t) => t.status === "OPEN").length;
+  const openTaskCount = contact.tasks.filter(
+    (t) => t.status !== "COMPLETED" && t.status !== "CANCELLED"
+  ).length;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -367,56 +372,21 @@ export default async function ContactDetailPage({
             content: (
               <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
                 <h2 className="mb-4 text-sm font-semibold text-zinc-100">Tasks</h2>
-                <div className="mb-4">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
                   <TaskQuickForm contactId={contact.id} />
+                  <Link
+                    href={`/tasks/new?contactId=${contact.id}`}
+                    className="shrink-0 text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
+                  >
+                    Full task form →
+                  </Link>
                 </div>
                 {contact.tasks.length === 0 ? (
                   <p className="text-sm text-zinc-500">No tasks yet.</p>
                 ) : (
                   <ul className="divide-y divide-zinc-800/60">
                     {contact.tasks.map((task) => (
-                      <li
-                        key={task.id}
-                        className="flex items-center justify-between py-2.5 text-sm"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <form action={toggleTaskStatus.bind(null, task.id, task.status)}>
-                            <button
-                              type="submit"
-                              className={`h-4 w-4 rounded border transition-colors ${
-                                task.status === "DONE"
-                                  ? "border-indigo-500 bg-indigo-500"
-                                  : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
-                              }`}
-                              aria-label="Toggle task status"
-                            />
-                          </form>
-                          <Link
-                            href={`/tasks/${task.id}`}
-                            className={
-                              task.status === "DONE"
-                                ? "text-zinc-500 line-through hover:text-zinc-400"
-                                : "text-zinc-200 hover:text-indigo-400"
-                            }
-                          >
-                            {task.title}
-                          </Link>
-                          <PriorityBadge priority={task.priority} />
-                          {task.dueDate && (
-                            <span className="text-xs text-zinc-500">
-                              {formatDate(task.dueDate)}
-                            </span>
-                          )}
-                        </div>
-                        <form action={deleteTask.bind(null, task.id)}>
-                          <ConfirmSubmitButton
-                            confirmMessage="Delete this task?"
-                            className="text-xs text-zinc-600 transition-colors hover:text-red-400"
-                          >
-                            Remove
-                          </ConfirmSubmitButton>
-                        </form>
-                      </li>
+                      <TaskRow key={task.id} task={task} hideRelation="contact" now={new Date()} />
                     ))}
                   </ul>
                 )}

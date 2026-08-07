@@ -5,6 +5,7 @@ import Link from "next/link";
 import { addDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { completeNextAction, dismissNextAction, snoozeNextAction, reopenNextAction } from "./actions";
+import { createTaskFromNextAction } from "../tasks/actions";
 import type { NBAPriority, NBAStatus } from "@prisma/client";
 
 const PRIORITY_VARIANT: Record<NBAPriority, "red" | "amber" | "blue" | "default"> = {
@@ -42,6 +43,9 @@ export type NextActionItemData = {
   dueDate: Date | string | null;
   href: string;
   snoozedUntil: Date | string | null;
+  contactId?: string | null;
+  companyId?: string | null;
+  dealId?: string | null;
 };
 
 export function NextActionItemRow({
@@ -54,6 +58,7 @@ export function NextActionItemRow({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
+  const [taskCreated, setTaskCreated] = useState(false);
 
   function run(action: () => Promise<{ error?: string }>) {
     setError(null);
@@ -99,6 +104,27 @@ export function NextActionItemRow({
       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
         {isActive ? (
           <>
+            <button
+              type="button"
+              disabled={isPending || taskCreated}
+              onClick={() => {
+                setError(null);
+                startTransition(async () => {
+                  const result = await createTaskFromNextAction({
+                    title: item.recommendedAction,
+                    dueDate: item.dueDate ? new Date(item.dueDate) : null,
+                    contactId: item.contactId,
+                    companyId: item.companyId,
+                    dealId: item.dealId,
+                  });
+                  if (result?.error) setError(result.error);
+                  else setTaskCreated(true);
+                });
+              }}
+              className="rounded-lg border border-indigo-500/30 px-2.5 py-1 text-xs font-medium text-indigo-400 transition-colors hover:bg-indigo-500/10 disabled:opacity-50"
+            >
+              {taskCreated ? "Task created ✓" : "Create task"}
+            </button>
             <button
               type="button"
               disabled={isPending}

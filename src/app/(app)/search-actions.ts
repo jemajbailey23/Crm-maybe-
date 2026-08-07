@@ -134,7 +134,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       id: t.id,
       type: "task" as const,
       title: t.title,
-      subtitle: t.status === "DONE" ? "Done" : "Open",
+      subtitle: t.status.charAt(0) + t.status.slice(1).toLowerCase().replace("_", " "),
       href: `/tasks/${t.id}`,
     })),
     ...projects.map((p) => ({

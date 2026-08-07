@@ -87,7 +87,7 @@ export async function createBooking(
       dueDate: startsAt,
       contactId: contact.id,
       assignedToId: owner.id,
-      notes: notes || null,
+      description: notes || null,
     },
   });
 

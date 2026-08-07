@@ -14,7 +14,11 @@ export async function getDeliverySnapshot(now: Date) {
     prisma.project.count({ where: { status: "ON_HOLD" } }),
     prisma.project.count({ where: { status: "IN_PROGRESS", dueDate: { lt: now } } }),
     prisma.task.count({
-      where: { status: "OPEN", projectId: { not: null }, dueDate: { lt: now } },
+      where: {
+        status: { notIn: ["COMPLETED", "CANCELLED"] },
+        projectId: { not: null },
+        dueDate: { lt: now },
+      },
     }),
     prisma.project.findMany({
       where: { status: { not: "COMPLETED" }, dueDate: { gte: now } },

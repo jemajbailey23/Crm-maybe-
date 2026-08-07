@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useRef, useTransition } from "react";
 import {
   addInvoice,
@@ -43,7 +44,7 @@ type InvoiceItem = {
   refundedAmount?: number;
 };
 
-function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
+function InvoiceRow({ invoice, contactId }: { invoice: InvoiceItem; contactId: string }) {
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -88,6 +89,14 @@ function InvoiceRow({ invoice }: { invoice: InvoiceItem }) {
             Stripe
           </span>
         )}
+        <Link
+          href={`/tasks/new?invoiceId=${invoice.id}&contactId=${contactId}&title=${encodeURIComponent(
+            `Follow up: ${invoice.description}`
+          )}`}
+          className="text-xs text-zinc-500 transition-colors hover:text-indigo-400"
+        >
+          + Task
+        </Link>
         <form action={deleteInvoice.bind(null, invoice.id)}>
           <ConfirmSubmitButton
             confirmMessage="Remove this invoice? This can't be undone."
@@ -179,7 +188,7 @@ export function InvoicesPanel({
       ) : (
         <ul className="divide-y divide-zinc-800/60">
           {invoices.map((invoice) => (
-            <InvoiceRow key={invoice.id} invoice={invoice} />
+            <InvoiceRow key={invoice.id} invoice={invoice} contactId={contactId} />
           ))}
         </ul>
       )}

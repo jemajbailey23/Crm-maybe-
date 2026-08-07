@@ -51,12 +51,15 @@ export default async function DashboardPage() {
     salesPipeline,
     revenueSnapshot,
     deliverySnapshot,
+    blockedTaskCount,
+    waitingTaskCount,
+    reviewTaskCount,
   ] = await Promise.all([
     prisma.contact.count({
       where: { status: "LEAD", createdAt: { gte: startOfToday, lte: endOfToday } },
     }),
     prisma.task.count({
-      where: { status: "OPEN", dueDate: { lte: endOfToday } },
+      where: { status: { notIn: ["COMPLETED", "CANCELLED"] }, dueDate: { lte: endOfToday } },
     }),
     prisma.activity.count({
       where: { type: "CALL", occurredAt: { gte: startOfToday, lte: endOfToday } },
@@ -64,9 +67,9 @@ export default async function DashboardPage() {
     prisma.booking.count({
       where: { startsAt: { gte: startOfToday, lte: endOfToday } },
     }),
-    prisma.task.count({ where: { status: "OPEN" } }),
+    prisma.task.count({ where: { status: { notIn: ["COMPLETED", "CANCELLED"] } } }),
     prisma.task.findMany({
-      where: { status: "OPEN", dueDate: { lte: endOfToday } },
+      where: { status: { notIn: ["COMPLETED", "CANCELLED"] }, dueDate: { lte: endOfToday } },
       orderBy: { dueDate: "asc" },
       take: 8,
       include: { contact: true, deal: true, project: true },
@@ -90,13 +93,16 @@ export default async function DashboardPage() {
       select: { stage: true, oneTimeValue: true, mrrValue: true },
     }),
     prisma.task.count({
-      where: { status: "OPEN", dueDate: { lt: startOfToday } },
+      where: { status: { notIn: ["COMPLETED", "CANCELLED"] }, dueDate: { lt: startOfToday } },
     }),
     prisma.project.count({ where: { status: "ON_HOLD" } }),
     getTopActiveNextActions(6),
     getSalesPipelineStats(now),
     getRevenueSnapshot(now, startOfMonth),
     getDeliverySnapshot(now),
+    prisma.task.count({ where: { status: "BLOCKED" } }),
+    prisma.task.count({ where: { status: "WAITING" } }),
+    prisma.task.count({ where: { status: "REVIEW" } }),
   ]);
 
   const wonDeals = allDeals.filter((d) => d.stage === "WON");
@@ -151,6 +157,9 @@ export default async function DashboardPage() {
         projectsOnHold={projectsOnHold}
         todaysTasks={todaysTasks}
         startOfToday={startOfToday}
+        blockedTaskCount={blockedTaskCount}
+        waitingTaskCount={waitingTaskCount}
+        reviewTaskCount={reviewTaskCount}
       />
 
       <SalesPipelinePanel

@@ -6,6 +6,8 @@ import { updateCompany, deleteCompany } from "../actions";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DealStageBadge } from "@/components/ui/badge";
 import { getStageLabels } from "@/lib/pipeline-stages";
+import { TaskQuickForm } from "../../tasks/task-quick-form";
+import { TaskRow } from "../../tasks/task-row";
 
 export default async function CompanyDetailPage({
   params,
@@ -21,6 +23,10 @@ export default async function CompanyDetailPage({
     include: {
       contacts: { orderBy: { createdAt: "desc" } },
       deals: { orderBy: { createdAt: "desc" } },
+      tasks: {
+        orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+        include: { contact: true, company: true, deal: true, project: true, invoice: true },
+      },
     },
   });
 
@@ -108,6 +114,28 @@ export default async function CompanyDetailPage({
                 </Link>
                 <DealStageBadge stage={deal.stage} label={stageLabels[deal.stage]} />
               </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Tasks</h2>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <TaskQuickForm companyId={company.id} />
+          <Link
+            href={`/tasks/new?companyId=${company.id}`}
+            className="shrink-0 text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
+          >
+            Full task form →
+          </Link>
+        </div>
+        {company.tasks.length === 0 ? (
+          <p className="text-sm text-zinc-500">No tasks yet.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-800/60">
+            {company.tasks.map((task) => (
+              <TaskRow key={task.id} task={task} hideRelation="company" now={new Date()} />
             ))}
           </ul>
         )}

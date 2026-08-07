@@ -63,6 +63,7 @@ model Company {
 
   contacts    Contact[]
   deals       Deal[]
+  tasks       Task[]
   nextActions NextBestActionItem[]
 }
 
@@ -75,6 +76,7 @@ enum Priority {
   LOW
   MEDIUM
   HIGH
+  CRITICAL
 }
 
 enum ContractStatus {
@@ -206,6 +208,8 @@ model Invoice {
 
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String
+
+  tasks Task[]
 }
 
 model ImportantLink {
@@ -384,9 +388,17 @@ model Deal {
   nextActions NextBestActionItem[]
 }
 
+// OPEN/DONE expanded to a full workflow. Existing rows are remapped on
+// migration: OPEN->READY, DONE->COMPLETED.
 enum TaskStatus {
-  OPEN
-  DONE
+  BACKLOG
+  READY
+  IN_PROGRESS
+  WAITING
+  BLOCKED
+  REVIEW
+  COMPLETED
+  CANCELLED
 }
 
 enum TaskRecurrence {
@@ -394,21 +406,39 @@ enum TaskRecurrence {
   DAILY
   WEEKLY
   MONTHLY
+  CUSTOM
 }
 
 model Task {
-  id              String         @id @default(cuid())
-  title           String
-  dueDate         DateTime?
-  status          TaskStatus     @default(OPEN)
-  notes           String?
-  priority        Priority       @default(MEDIUM)
-  recurrence      TaskRecurrence @default(NONE)
-  labels          String? // comma-separated for simplicity, same pattern as Contact.tags
-  progress        Int            @default(0) // 0-100
-  overdueNotified Boolean        @default(false) // guards the Task Overdue automation from re-firing
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id          String     @id @default(cuid())
+  title       String
+  description String? // was "notes" pre-Stage-4; renamed for clarity now that completionNotes exists separately
+  startDate   DateTime?
+  dueDate     DateTime?
+  status      TaskStatus @default(READY)
+  priority    Priority   @default(MEDIUM)
+  labels      String? // comma-separated for simplicity, same pattern as Contact.tags
+  progress    Int        @default(0) // 0-100
+
+  recurrence             TaskRecurrence @default(NONE)
+  recurrenceIntervalDays Int? // only meaningful when recurrence = CUSTOM
+  // Guards against spawning more than one next-occurrence task if a
+  // recurring task's status is toggled to Completed and back multiple times.
+  nextInstanceCreated    Boolean        @default(false)
+
+  estimatedMinutes Int? // time estimate
+  trackedMinutes   Int  @default(0) // time logged so far, incremented via a simple "log time" control
+
+  waitingReason String? // populated when status = WAITING
+  blockedReason String? // populated when status = BLOCKED
+
+  completionNotes       String?
+  completionEvidenceUrl String? // link to a deployed page, doc, screenshot, etc. proving the work is done
+  completedAt           DateTime?
+
+  overdueNotified Boolean  @default(false) // guards the Task Overdue automation from re-firing
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   assignedTo   User?   @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   assignedToId String?
@@ -416,13 +446,48 @@ model Task {
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   contactId String?
 
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyId String?
+
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
   dealId String?
 
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   projectId String?
 
-  attachments Attachment[]
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceId String?
+
+  attachments  Attachment[]
+  checklist    TaskChecklistItem[]
+  dependsOn    TaskDependency[]    @relation("TaskDependsOn")
+  dependedOnBy TaskDependency[]    @relation("TaskDependedOnBy")
+}
+
+model TaskChecklistItem {
+  id        String   @id @default(cuid())
+  label     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId String
+}
+
+// Explicit join model for "this task can't start until that task is done."
+// dependsOnTaskId is the blocker; taskId is the task being blocked.
+model TaskDependency {
+  id String @id @default(cuid())
+
+  task   Task   @relation("TaskDependsOn", fields: [taskId], references: [id], onDelete: Cascade)
+  taskId String
+
+  dependsOnTask   Task   @relation("TaskDependedOnBy", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+  dependsOnTaskId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, dependsOnTaskId])
 }
 
 enum ActivityType {

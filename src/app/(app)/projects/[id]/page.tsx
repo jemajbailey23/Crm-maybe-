@@ -7,10 +7,10 @@ import { ProjectProgressControl } from "../project-progress-control";
 import { ChecklistPanel } from "../checklist-panel";
 import { TimeEntryForm } from "../time-entry-form";
 import { deleteTimeEntry } from "../time-actions";
-import { toggleTaskStatus, deleteTask } from "../../tasks/actions";
 import { deleteActivity } from "../../activities/actions";
 import { deleteAttachment } from "../../contacts/attachments-actions";
 import { TaskQuickForm } from "../../tasks/task-quick-form";
+import { TaskRow } from "../../tasks/task-row";
 import { ActivityQuickForm } from "../../activities/activity-quick-form";
 import { AttachmentUploadForm } from "../../contacts/attachment-upload-form";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
@@ -60,7 +60,10 @@ export default async function ProjectDetailPage({
       where: { id },
       include: {
         contact: true,
-        tasks: { orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
+        tasks: {
+          orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+          include: { contact: true, company: true, deal: true, project: true, invoice: true },
+        },
         checklist: { orderBy: { createdAt: "asc" } },
         attachments: { orderBy: { createdAt: "desc" } },
         activities: { orderBy: { occurredAt: "desc" } },
@@ -135,53 +138,21 @@ export default async function ProjectDetailPage({
 
       <section className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <h2 className="mb-4 text-sm font-semibold text-zinc-100">Assigned tasks</h2>
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <TaskQuickForm projectId={project.id} />
+          <Link
+            href={`/tasks/new?projectId=${project.id}`}
+            className="shrink-0 text-xs font-medium text-zinc-500 transition-colors hover:text-indigo-400"
+          >
+            Full task form →
+          </Link>
         </div>
         {project.tasks.length === 0 ? (
           <p className="text-sm text-zinc-500">No tasks yet.</p>
         ) : (
           <ul className="divide-y divide-zinc-800/60">
             {project.tasks.map((task) => (
-              <li key={task.id} className="flex items-center justify-between py-2.5 text-sm">
-                <div className="flex items-center gap-2.5">
-                  <form action={toggleTaskStatus.bind(null, task.id, task.status)}>
-                    <button
-                      type="submit"
-                      className={`h-4 w-4 rounded border transition-colors ${
-                        task.status === "DONE"
-                          ? "border-indigo-500 bg-indigo-500"
-                          : "border-zinc-700 bg-zinc-900 hover:border-zinc-600"
-                      }`}
-                      aria-label="Toggle task status"
-                    />
-                  </form>
-                  <Link
-                    href={`/tasks/${task.id}`}
-                    className={
-                      task.status === "DONE"
-                        ? "text-zinc-500 line-through hover:text-zinc-400"
-                        : "text-zinc-200 hover:text-indigo-400"
-                    }
-                  >
-                    {task.title}
-                  </Link>
-                  <PriorityBadge priority={task.priority} />
-                  {task.dueDate && (
-                    <span className="text-xs text-zinc-500">
-                      {formatDate(task.dueDate)}
-                    </span>
-                  )}
-                </div>
-                <form action={deleteTask.bind(null, task.id)}>
-                  <ConfirmSubmitButton
-                    confirmMessage="Delete this task?"
-                    className="text-xs text-zinc-600 transition-colors hover:text-red-400"
-                  >
-                    Remove
-                  </ConfirmSubmitButton>
-                </form>
-              </li>
+              <TaskRow key={task.id} task={task} hideRelation="project" now={new Date()} />
             ))}
           </ul>
         )}
