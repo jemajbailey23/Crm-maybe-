@@ -8,6 +8,7 @@ import { KnowledgeStatusBadge, KnowledgeVisibilityBadge, AiEnabledBadge, LabelCh
 import { rankIdsByFullText } from "@/lib/knowledge-access";
 import { CATEGORIES, CATEGORY_LABEL } from "./categories";
 import { KnowledgeFilters } from "./knowledge-filters";
+import { ImportStarterPackButton } from "./import-starter-pack-button";
 import type { Prisma } from "@prisma/client";
 
 function formatDate(date: Date) {
@@ -116,12 +117,15 @@ export default async function KnowledgeBasePage({
             your team — and the AI Assistant — can search.
           </p>
         </div>
-        <Link
-          href="/knowledge/new"
-          className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400"
-        >
-          New article
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ImportStarterPackButton />
+          <Link
+            href="/knowledge/new"
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-colors hover:bg-indigo-400"
+          >
+            New article
+          </Link>
+        </div>
       </div>
 
       <Suspense>
