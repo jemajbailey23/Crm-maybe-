@@ -9,10 +9,15 @@ export default async function NewProjectPage({
 }) {
   const { contactId, name } = await searchParams;
 
-  const contacts = await prisma.contact.findMany({
-    orderBy: { firstName: "asc" },
-    select: { id: true, firstName: true, lastName: true, businessName: true },
-  });
+  const [contacts, companies, owners, templates] = await Promise.all([
+    prisma.contact.findMany({
+      orderBy: { firstName: "asc" },
+      select: { id: true, firstName: true, lastName: true, businessName: true },
+    }),
+    prisma.company.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.projectTemplate.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, description: true } }),
+  ]);
 
   return (
     <div className="max-w-xl space-y-6">
@@ -24,6 +29,9 @@ export default async function NewProjectPage({
         <ProjectForm
           action={createProject}
           contacts={contacts}
+          companies={companies}
+          owners={owners}
+          templates={templates}
           defaultValues={{ contactId, name }}
           submitLabel="Create project"
         />

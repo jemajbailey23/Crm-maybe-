@@ -5,9 +5,15 @@ import { updateProjectStatus } from "./actions";
 
 const STATUSES: { value: string; label: string }[] = [
   { value: "NOT_STARTED", label: "Not started" },
+  { value: "PLANNING", label: "Planning" },
   { value: "IN_PROGRESS", label: "In progress" },
-  { value: "ON_HOLD", label: "On hold" },
+  { value: "WAITING_ON_CLIENT", label: "Waiting on client" },
+  { value: "WAITING_ON_APPROVAL", label: "Waiting on approval" },
+  { value: "BLOCKED", label: "Blocked" },
+  { value: "QUALITY_REVIEW", label: "Quality review" },
   { value: "COMPLETED", label: "Completed" },
+  { value: "PAUSED", label: "Paused" },
+  { value: "CANCELLED", label: "Cancelled" },
 ];
 
 export function ProjectStatusSelect({

@@ -168,7 +168,7 @@ async function getClientHistory(name: string) {
     },
     include: {
       deals: { select: { title: true, oneTimeValue: true, mrrValue: true, stage: true } },
-      projects: { select: { name: true, status: true, progress: true, dueDate: true } },
+      projects: { select: { name: true, status: true, progress: true, targetCompletionDate: true } },
       services: { select: { name: true, billingType: true, amount: true } },
       invoices: { select: { description: true, amount: true, status: true, dueDate: true } },
       activities: {

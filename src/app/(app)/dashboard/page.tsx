@@ -95,7 +95,7 @@ export default async function DashboardPage() {
     prisma.task.count({
       where: { status: { notIn: ["COMPLETED", "CANCELLED"] }, dueDate: { lt: startOfToday } },
     }),
-    prisma.project.count({ where: { status: "ON_HOLD" } }),
+    prisma.project.count({ where: { status: "PAUSED" } }),
     getTopActiveNextActions(6),
     getSalesPipelineStats(now),
     getRevenueSnapshot(now, startOfMonth),
@@ -189,10 +189,13 @@ export default async function DashboardPage() {
       />
 
       <DeliverySnapshotPanel
-        activeProjects={deliverySnapshot.activeProjects}
-        projectsInProgress={deliverySnapshot.projectsInProgress}
-        projectsOnHold={deliverySnapshot.projectsOnHold}
-        atRiskProjects={deliverySnapshot.atRiskProjects}
+        activeProjectsCount={deliverySnapshot.activeProjectsCount}
+        onTrack={deliverySnapshot.onTrack}
+        needsAttention={deliverySnapshot.needsAttention}
+        atRisk={deliverySnapshot.atRisk}
+        blocked={deliverySnapshot.blocked}
+        waitingOnClient={deliverySnapshot.waitingOnClient}
+        waitingOnApproval={deliverySnapshot.waitingOnApproval}
         overdueProjectTasks={deliverySnapshot.overdueProjectTasks}
         upcomingDeadlines={deliverySnapshot.upcomingDeadlines}
       />

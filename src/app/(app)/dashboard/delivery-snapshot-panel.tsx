@@ -8,22 +8,28 @@ function formatDate(date: Date) {
 type UpcomingDeadline = {
   id: string;
   name: string;
-  dueDate: Date | null;
+  targetCompletionDate: Date | null;
   contact: { id: string; firstName: string; lastName: string; businessName: string | null };
 };
 
 export function DeliverySnapshotPanel({
-  activeProjects,
-  projectsInProgress,
-  projectsOnHold,
-  atRiskProjects,
+  activeProjectsCount,
+  onTrack,
+  needsAttention,
+  atRisk,
+  blocked,
+  waitingOnClient,
+  waitingOnApproval,
   overdueProjectTasks,
   upcomingDeadlines,
 }: {
-  activeProjects: number;
-  projectsInProgress: number;
-  projectsOnHold: number;
-  atRiskProjects: number;
+  activeProjectsCount: number;
+  onTrack: number;
+  needsAttention: number;
+  atRisk: number;
+  blocked: number;
+  waitingOnClient: number;
+  waitingOnApproval: number;
   overdueProjectTasks: number;
   upcomingDeadlines: UpcomingDeadline[];
 }) {
@@ -41,34 +47,31 @@ export function DeliverySnapshotPanel({
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-            Active projects
-          </p>
-          <p className="mt-1 text-lg font-semibold text-zinc-50">{activeProjects}</p>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Active projects</p>
+          <p className="mt-1 text-lg font-semibold text-zinc-50">{activeProjectsCount}</p>
+          <p className="text-[11px] text-zinc-500">{onTrack} on track</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">At risk</p>
+          <p className="mt-1 text-lg font-semibold text-red-400">{atRisk}</p>
+          <p className="text-[11px] text-zinc-500">{needsAttention} need attention</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Blocked</p>
+          <p className="mt-1 text-lg font-semibold text-red-400">{blocked}</p>
+          <p className="text-[11px] text-zinc-500">{overdueProjectTasks} overdue tasks</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">Waiting</p>
+          <p className="mt-1 text-lg font-semibold text-amber-400">{waitingOnClient + waitingOnApproval}</p>
           <p className="text-[11px] text-zinc-500">
-            {projectsInProgress} in progress · {projectsOnHold} on hold
+            {waitingOnClient} on client · {waitingOnApproval} on approval
           </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-            Projects at risk
-          </p>
-          <p className="mt-1 text-lg font-semibold text-red-400">{atRiskProjects}</p>
-          <p className="text-[11px] text-zinc-500">past due, still in progress</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-            Overdue deliverables
-          </p>
-          <p className="mt-1 text-lg font-semibold text-red-400">{overdueProjectTasks}</p>
-          <p className="text-[11px] text-zinc-500">open tasks past due</p>
         </div>
       </div>
 
       <div className="mt-4 border-t border-zinc-800 pt-4">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Upcoming deadlines
-        </p>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Upcoming deadlines</p>
         {upcomingDeadlines.length === 0 ? (
           <EmptyState message="Nothing due soon." />
         ) : (
@@ -82,10 +85,9 @@ export function DeliverySnapshotPanel({
                   {project.name}
                 </Link>
                 <span className="shrink-0 text-xs text-zinc-500">
-                  {project.dueDate && formatDate(project.dueDate)}
+                  {project.targetCompletionDate && formatDate(project.targetCompletionDate)}
                   {" · "}
-                  {project.contact.businessName ||
-                    `${project.contact.firstName} ${project.contact.lastName}`}
+                  {project.contact.businessName || `${project.contact.firstName} ${project.contact.lastName}`}
                 </span>
               </li>
             ))}

@@ -147,22 +147,56 @@ export function PriorityBadge({ priority }: { priority: string }) {
 
 const PROJECT_STATUS_VARIANT: Record<string, BadgeVariant> = {
   NOT_STARTED: "default",
+  PLANNING: "default",
   IN_PROGRESS: "blue",
-  ON_HOLD: "amber",
+  WAITING_ON_CLIENT: "amber",
+  WAITING_ON_APPROVAL: "amber",
+  BLOCKED: "red",
+  QUALITY_REVIEW: "violet",
   COMPLETED: "emerald",
+  PAUSED: "default",
+  CANCELLED: "default",
 };
 
 const PROJECT_STATUS_LABEL: Record<string, string> = {
   NOT_STARTED: "Not started",
+  PLANNING: "Planning",
   IN_PROGRESS: "In progress",
-  ON_HOLD: "On hold",
+  WAITING_ON_CLIENT: "Waiting on client",
+  WAITING_ON_APPROVAL: "Waiting on approval",
+  BLOCKED: "Blocked",
+  QUALITY_REVIEW: "Quality review",
   COMPLETED: "Completed",
+  PAUSED: "Paused",
+  CANCELLED: "Cancelled",
 };
 
 export function ProjectStatusBadge({ status }: { status: string }) {
   return (
     <Badge variant={PROJECT_STATUS_VARIANT[status] ?? "default"}>
       {PROJECT_STATUS_LABEL[status] ?? status}
+    </Badge>
+  );
+}
+
+const PROJECT_HEALTH_VARIANT: Record<string, BadgeVariant> = {
+  ON_TRACK: "emerald",
+  NEEDS_ATTENTION: "amber",
+  AT_RISK: "red",
+  BLOCKED: "red",
+};
+
+const PROJECT_HEALTH_LABEL: Record<string, string> = {
+  ON_TRACK: "On track",
+  NEEDS_ATTENTION: "Needs attention",
+  AT_RISK: "At risk",
+  BLOCKED: "Blocked",
+};
+
+export function ProjectHealthBadge({ health }: { health: string }) {
+  return (
+    <Badge variant={PROJECT_HEALTH_VARIANT[health] ?? "default"}>
+      {PROJECT_HEALTH_LABEL[health] ?? health}
     </Badge>
   );
 }

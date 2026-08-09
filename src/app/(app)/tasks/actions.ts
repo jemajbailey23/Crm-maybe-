@@ -191,7 +191,12 @@ export async function updateTask(
 
   const statusChanged = existing.status !== fields.status;
   if (statusChanged) {
-    const gateError = validateTaskStatusTransition(fields.status, fields);
+    // requiresEvidence isn't a user-editable field (set only via project
+    // templates), so it has to come from the existing row, not `fields`.
+    const gateError = validateTaskStatusTransition(fields.status, {
+      ...fields,
+      requiresEvidence: existing.requiresEvidence,
+    });
     if (gateError) return { error: gateError };
   }
 
@@ -355,10 +360,16 @@ export async function bulkDeleteTasks(ids: string[]): Promise<TaskActionResult> 
 export async function bulkCompleteTasks(ids: string[]): Promise<TaskActionResult> {
   if (ids.length === 0) return { error: "No tasks selected." };
 
-  const toComplete = await prisma.task.findMany({
+  const candidates = await prisma.task.findMany({
     where: { id: { in: ids }, status: { not: "COMPLETED" } },
-    select: { id: true, recurrence: true },
+    select: { id: true, recurrence: true, requiresEvidence: true, completionEvidenceUrl: true },
   });
+
+  // Bulk-complete has no form to collect evidence in, so a task that
+  // requires it is skipped here rather than silently completed without
+  // proof — it still needs the detail page's evidence field filled in.
+  const blocked = candidates.filter((t) => t.requiresEvidence && !t.completionEvidenceUrl?.trim());
+  const toComplete = candidates.filter((t) => !blocked.includes(t));
 
   await prisma.task.updateMany({
     where: { id: { in: toComplete.map((t) => t.id) } },
@@ -373,6 +384,14 @@ export async function bulkCompleteTasks(ids: string[]): Promise<TaskActionResult
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
+
+  if (blocked.length > 0) {
+    return {
+      error: `${blocked.length} task${blocked.length === 1 ? "" : "s"} require completion evidence and ${
+        blocked.length === 1 ? "wasn't" : "weren't"
+      } completed — add evidence on ${blocked.length === 1 ? "its" : "their"} detail page first.`,
+    };
+  }
   return {};
 }
 

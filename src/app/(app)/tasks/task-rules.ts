@@ -7,13 +7,24 @@ import type { TaskStatus } from "@prisma/client";
 // "why."
 export function validateTaskStatusTransition(
   nextStatus: TaskStatus,
-  task: { waitingReason: string | null; blockedReason: string | null }
+  task: {
+    waitingReason: string | null;
+    blockedReason: string | null;
+    requiresEvidence?: boolean;
+    completionEvidenceUrl?: string | null;
+  }
 ): string | null {
   if (nextStatus === "WAITING" && !task.waitingReason?.trim()) {
     return "Add a waiting reason before marking this task Waiting.";
   }
   if (nextStatus === "BLOCKED" && !task.blockedReason?.trim()) {
     return "Add a blocked reason before marking this task Blocked.";
+  }
+  // Project-template quality-control tasks can require proof of completion
+  // (a link to the deployed page, doc, screenshot, etc.) before they can be
+  // marked done — see Task.requiresEvidence / ProjectTemplateTask.
+  if (nextStatus === "COMPLETED" && task.requiresEvidence && !task.completionEvidenceUrl?.trim()) {
+    return "This task requires completion evidence (a link) before it can be marked Completed.";
   }
   return null;
 }

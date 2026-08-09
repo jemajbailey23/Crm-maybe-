@@ -43,6 +43,7 @@ model User {
   ownedArticles       KnowledgeArticle[]
   articleRevisions    KnowledgeArticleRevision[]
   aiQueryLogs         AiQueryLog[]
+  ownedProjects       Project[]
 }
 
 model PasswordResetToken {
@@ -67,6 +68,7 @@ model Company {
   contacts    Contact[]
   deals       Deal[]
   tasks       Task[]
+  projects    Project[]
   nextActions NextBestActionItem[]
 }
 
@@ -263,31 +265,183 @@ model Attachment {
   articleId String?
 }
 
+// Expanded from 4 values (NOT_STARTED/IN_PROGRESS/ON_HOLD/COMPLETED) to a
+// full delivery workflow. Existing rows are remapped on migration:
+// ON_HOLD -> PAUSED (closest existing meaning); everything else keeps its
+// name. BLOCKED, WAITING_ON_CLIENT, and WAITING_ON_APPROVAL are new,
+// distinct statuses a project didn't previously have a way to express.
 enum ProjectStatus {
   NOT_STARTED
+  PLANNING
   IN_PROGRESS
-  ON_HOLD
+  WAITING_ON_CLIENT
+  WAITING_ON_APPROVAL
+  BLOCKED
+  QUALITY_REVIEW
   COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Project {
-  id        String        @id @default(cuid())
-  name      String // e.g. Website, SEO, AI Automation, Google Business Profile, CRM Setup, Branding
-  status    ProjectStatus @default(NOT_STARTED)
-  progress  Int           @default(0) // 0-100
-  dueDate   DateTime?
-  priority  Priority      @default(MEDIUM)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  name            String // e.g. Website, SEO, AI Automation, Google Business Profile, CRM Setup, Branding
+  status          ProjectStatus @default(NOT_STARTED)
+  // Reset every time status changes (see actions.ts) — same convention as
+  // Deal.stageEnteredAt. Lets health checks answer "how long has this been
+  // waiting on the client/approval" transparently instead of guessing off
+  // updatedAt, which changes on any edit.
+  statusEnteredAt DateTime      @default(now())
+  progress        Int           @default(0) // 0-100, i.e. "completion percentage"
+
+  // Renamed from the original "dueDate" to match the Stage 5 field list —
+  // same column, same meaning, just a clearer name now that
+  // actualCompletionDate exists alongside it.
+  targetCompletionDate DateTime?
+  actualCompletionDate DateTime? // set automatically when status first becomes COMPLETED
+
+  priority Priority @default(MEDIUM)
+
+  // health is intentionally NOT a stored column — it's always computed at
+  // read time from transparent, inspectable rules (see project-rules.ts),
+  // the same way Deal warnings already work in this codebase. Storing a
+  // cached health value would let it silently go stale.
+
+  startDate DateTime?
+
+  service String? // free text, e.g. "Local SEO", "Website Build" — same convention as Deal.serviceInterest
+
+  blockedReason String? // populated when status = BLOCKED, same convention as Task.blockedReason
+  waitingReason String? // populated when status = WAITING_ON_CLIENT or WAITING_ON_APPROVAL
+
+  hoursBudgeted Float? // hoursTracked is derived from TimeEntry at read time, not duplicated here
+
+  // Manually entered — there's no clean per-project revenue linkage in the
+  // schema (Services/Invoices attach to Contact, not Project) to compute
+  // profitability from honestly, so this is an estimate the owner enters,
+  // not an auto-calculated figure.
+  estimatedDeliveryCost  Float?
+  estimatedProfitability Float?
+
+  internalNotes     String? // never shown outside the CRM
+  clientFacingNotes String? // written as if the client might see it — no client portal exists yet to actually show it
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String
+
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyId String?
+
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+
+  // The template this project was created from, if any — kept for
+  // reference/reporting even though the generated tasks/approvals are
+  // independent rows by that point (editing the template later doesn't
+  // retroactively change already-created projects).
+  template   ProjectTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  templateId String?
 
   tasks       Task[]
   checklist   ChecklistItem[]
   attachments Attachment[]
   activities  Activity[]
   timeEntries TimeEntry[]
+  milestones  ProjectMilestone[]
+  approvals   ProjectApproval[]
+
+  @@index([status])
+  @@index([companyId])
+  @@index([ownerId])
+}
+
+model ProjectMilestone {
+  id          String    @id @default(cuid())
+  title       String
+  dueDate     DateTime?
+  completedAt DateTime?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@index([projectId])
+}
+
+model ProjectApproval {
+  id          String         @id @default(cuid())
+  label       String // e.g. "Client sign-off on homepage design"
+  status      ApprovalStatus @default(PENDING)
+  requestedAt DateTime       @default(now())
+  respondedAt DateTime?
+  notes       String?
+  createdAt   DateTime       @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@index([projectId])
+}
+
+// A reusable checklist of default work for a kind of engagement (e.g.
+// "Website Build") — applied once at project creation to generate real
+// Task/TaskDependency/ProjectApproval rows. Editing a template afterward
+// never retroactively changes projects already created from it.
+model ProjectTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks     ProjectTemplateTask[]
+  approvals ProjectTemplateApproval[]
+  projects  Project[]
+}
+
+model ProjectTemplateTask {
+  id                String  @id @default(cuid())
+  title             String
+  description       String?
+  dueDateOffsetDays Int? // days after the project's startDate this task is due
+  isQualityControl  Boolean @default(false)
+  requiresEvidence  Boolean @default(false)
+  order             Int     @default(0)
+
+  template   ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId String
+
+  // Self-reference within the same template: this task can't start until
+  // the referenced template task's generated Task is done. Nullable —
+  // most template tasks have no dependency.
+  dependsOn    ProjectTemplateTask?  @relation("TemplateTaskDependsOn", fields: [dependsOnId], references: [id], onDelete: SetNull)
+  dependsOnId  String?
+  dependedOnBy ProjectTemplateTask[] @relation("TemplateTaskDependsOn")
+
+  @@index([templateId])
+}
+
+model ProjectTemplateApproval {
+  id                String @id @default(cuid())
+  label             String
+  dueDateOffsetDays Int?
+  order             Int    @default(0)
+
+  template   ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId String
+
+  @@index([templateId])
 }
 
 model ChecklistItem {
@@ -444,6 +598,13 @@ model Task {
   completionNotes       String?
   completionEvidenceUrl String? // link to a deployed page, doc, screenshot, etc. proving the work is done
   completedAt           DateTime?
+
+  // Project-template flags (Stage 5). isQualityControl just marks the task
+  // as a QC checkpoint for display; requiresEvidence is enforced server-
+  // side — see tasks/actions.ts — a task can't be marked Completed without
+  // completionEvidenceUrl set when this is true.
+  isQualityControl Boolean @default(false)
+  requiresEvidence Boolean @default(false)
 
   overdueNotified Boolean  @default(false) // guards the Task Overdue automation from re-firing
   createdAt       DateTime @default(now())
