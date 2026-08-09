@@ -15,12 +15,22 @@ export default function ImportContactsPage() {
       <div className="animate-slide-up space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
         <div className="text-sm text-zinc-400">
           <p>
-            Expected columns: <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">firstName</code>,{" "}
-            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">lastName</code> (required), plus
-            any of <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">email</code>,{" "}
+            Requires either a person&apos;s{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">firstName</code> +{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">lastName</code>, or a{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">businessName</code> for
+            business-lead lists with no individual contact yet. Also supports{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">email</code>,{" "}
             <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">phone</code>,{" "}
             <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">title</code>,{" "}
             <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">company</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">industry</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">website</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">address</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">priority</code> (Low/Medium/
+            High/Critical), <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">leadSource</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">nextFollowUpAt</code>,{" "}
+            <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">currentProblems</code>,{" "}
             <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">tags</code>,{" "}
             <code className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-200">notes</code>. Column order
             doesn&apos;t matter, and matching is case-insensitive. A company

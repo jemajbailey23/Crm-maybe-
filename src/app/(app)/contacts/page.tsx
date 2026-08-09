@@ -36,6 +36,7 @@ export default async function ContactsPage({
           OR: [
             { firstName: { contains: q, mode: "insensitive" as const } },
             { lastName: { contains: q, mode: "insensitive" as const } },
+            { businessName: { contains: q, mode: "insensitive" as const } },
             { email: { contains: q, mode: "insensitive" as const } },
             { phone: { contains: q, mode: "insensitive" as const } },
             { company: { name: { contains: q, mode: "insensitive" as const } } },
@@ -137,17 +138,23 @@ export default async function ContactsPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
-              {contacts.map((contact) => (
+              {contacts.map((contact) => {
+                // Business-only leads (imported with no individual contact
+                // name yet) fall back to the business name, same convention
+                // already used on the contact detail page.
+                const displayName =
+                  `${contact.firstName} ${contact.lastName}`.trim() || contact.businessName || "Unnamed contact";
+                return (
                 <tr key={contact.id} className="group transition-colors hover:bg-zinc-800/30">
                   <td className="px-4 py-3">
-                    <RowCheckbox id={contact.id} label={`${contact.firstName} ${contact.lastName}`} />
+                    <RowCheckbox id={contact.id} label={displayName} />
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <Link
                       href={`/contacts/${contact.id}`}
                       className="font-medium text-zinc-100 hover:text-indigo-400"
                     >
-                      {contact.firstName} {contact.lastName}
+                      {displayName}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-zinc-400">
@@ -162,7 +169,7 @@ export default async function ContactsPage({
                   <td className="px-4 py-3 text-right text-sm">
                     <form action={deleteContact.bind(null, contact.id)}>
                       <ConfirmSubmitButton
-                        confirmMessage={`Delete ${contact.firstName} ${contact.lastName}? This can't be undone.`}
+                        confirmMessage={`Delete ${displayName}? This can't be undone.`}
                         className="text-xs text-zinc-600 transition-opacity hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
                       >
                         Delete
@@ -170,7 +177,8 @@ export default async function ContactsPage({
                     </form>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

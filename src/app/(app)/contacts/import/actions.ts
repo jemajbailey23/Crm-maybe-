@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import Papa from "papaparse";
 import { prisma } from "@/lib/prisma";
+import { Priority } from "@prisma/client";
 
 export type ImportState = {
   error?: string;
@@ -30,10 +31,42 @@ const HEADER_ALIASES: Record<string, string> = {
   tags: "tags",
   notes: "notes",
   note: "notes",
+  // Business-lead-list fields (e.g. a prospecting tracker with no
+  // individual contact name yet — see businessName handling below).
+  businessname: "businessName",
+  business: "businessName",
+  niche: "industry",
+  industry: "industry",
+  website: "website",
+  address: "address",
+  priority: "priority",
+  leadpriority: "priority",
+  leadsource: "leadSource",
+  source: "leadSource",
+  nextfollowup: "nextFollowUpAt",
+  nextfollowupat: "nextFollowUpAt",
+  nextfollowupdate: "nextFollowUpAt",
+  followupdate: "nextFollowUpAt",
+  currentproblems: "currentProblems",
+  whythislead: "currentProblems",
 };
+
+const PRIORITY_VALUES = Object.values(Priority);
 
 function normalizeHeader(header: string) {
   return header.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function parsePriority(raw: string | undefined): Priority | undefined {
+  if (!raw) return undefined;
+  const upper = raw.trim().toUpperCase();
+  return PRIORITY_VALUES.includes(upper as Priority) ? (upper as Priority) : undefined;
+}
+
+function parseDate(raw: string | undefined): Date | undefined {
+  if (!raw?.trim()) return undefined;
+  const parsed = new Date(raw.trim());
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
 export async function importContactsCsv(
@@ -70,10 +103,18 @@ export async function importContactsCsv(
 
     const firstName = row.firstName ?? "";
     const lastName = row.lastName ?? "";
+    const businessName = row.businessName || null;
     const rowNumber = i + 2; // account for the header row, 1-indexed
 
-    if (!firstName || !lastName) {
-      skipped.push({ row: rowNumber, reason: "Missing first or last name" });
+    // A row needs *some* identifying name — either a person's first/last
+    // name, or (for business-lead lists that don't have a contact person
+    // yet) a business name. Everything else is optional.
+    if (!firstName && !lastName && !businessName) {
+      skipped.push({ row: rowNumber, reason: "Missing a name (first/last name or business name)" });
+      continue;
+    }
+    if ((firstName && !lastName) || (!firstName && lastName)) {
+      skipped.push({ row: rowNumber, reason: "Has a first name or last name but not both" });
       continue;
     }
 
@@ -109,6 +150,14 @@ export async function importContactsCsv(
         tags: row.tags || null,
         notes: row.notes || null,
         companyId,
+        businessName,
+        industry: row.industry || null,
+        website: row.website || null,
+        address: row.address || null,
+        priority: parsePriority(row.priority) ?? Priority.MEDIUM,
+        leadSource: row.leadSource || null,
+        nextFollowUpAt: parseDate(row.nextFollowUpAt) ?? null,
+        currentProblems: row.currentProblems || null,
       },
     });
     imported++;
