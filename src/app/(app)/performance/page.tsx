@@ -5,6 +5,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { GoalTargetInput } from "./goal-target-input";
 import { KpiProgressBar } from "./kpi-progress-bar";
 import type { GoalMetric } from "@prisma/client";
+import { cashCollected, closedDealValue } from "@/lib/finance-calculations";
 
 export const dynamic = "force-dynamic";
 
@@ -43,11 +44,21 @@ export default async function PerformancePage() {
     }),
     prisma.deal.findMany({
       where: { stage: "WON", wonAt: { gte: rangeStart, lte: rangeEnd } },
-      select: { oneTimeValue: true, mrrValue: true, wonAt: true },
+      select: { stage: true, oneTimeValue: true, mrrValue: true, wonAt: true },
     }),
     prisma.invoice.findMany({
       where: { status: "PAID", paidAt: { gte: rangeStart, lte: rangeEnd } },
-      select: { amount: true, paidAt: true, refundedAmount: true },
+      select: {
+        amount: true,
+        status: true,
+        paidAt: true,
+        issuedDate: true,
+        dueDate: true,
+        createdAt: true,
+        refundedAmount: true,
+        isRecurring: true,
+        contactId: true,
+      },
     }),
     prisma.goal.findMany({ where: { userId: user.id } }),
   ]);
@@ -65,16 +76,17 @@ export default async function PerformancePage() {
   const closedDeals = (start: Date, end: Date) =>
     deals.filter((d) => inRange(d.wonAt, start, end));
 
-  const revenueClosed = (start: Date, end: Date) => {
-    const dealTotal = closedDeals(start, end).reduce(
-      (sum, d) => sum + (d.oneTimeValue ?? 0) + (d.mrrValue ?? 0),
-      0
-    );
-    const invoiceTotal = invoices
-      .filter((i) => inRange(i.paidAt, start, end))
-      .reduce((sum, i) => sum + (i.amount - i.refundedAmount), 0);
-    return dealTotal + invoiceTotal;
-  };
+  // "Revenue closed" used to blend won-deal value with paid-invoice value
+  // into one figure — that double-counted a sale the moment its invoice
+  // was also paid (deal value AND invoice value both landed in the same
+  // total). Per the Stage 6 rule "Do not count won deals as collected
+  // revenue," this now delegates to the exact same cashCollected() used on
+  // /financials — paid invoices only, net of refunds — so this page can
+  // never disagree with Financials about what "revenue" means. Won-deal
+  // value is still shown, just as its own separate, clearly-labeled metric
+  // below (closedDealValue) rather than folded into revenue.
+  const revenueCollected = (start: Date, end: Date) => cashCollected(invoices, start, end);
+  const dealValueClosed = (start: Date, end: Date) => closedDealValue(deals, start, end);
 
   const metrics: {
     metric: GoalMetric;
@@ -120,12 +132,19 @@ export default async function PerformancePage() {
     },
     {
       metric: "REVENUE",
-      label: "Revenue closed",
-      weekActual: revenueClosed(weekStart, weekEnd),
-      monthActual: revenueClosed(monthStart, monthEnd),
+      label: "Revenue collected",
+      weekActual: revenueCollected(weekStart, weekEnd),
+      monthActual: revenueCollected(monthStart, monthEnd),
       isCurrency: true,
     },
   ];
+
+  // Shown separately from the Goal-tracked metrics above (not itself
+  // goal-trackable — there's no GoalMetric slot for it, and per the Stage
+  // 6 spec won deals are for closed-sales/forecasting reporting only, never
+  // revenue) so it's never mistaken for part of "Revenue collected."
+  const dealValueWeek = dealValueClosed(weekStart, weekEnd);
+  const dealValueMonth = dealValueClosed(monthStart, monthEnd);
 
   const display = (value: number, isCurrency: boolean) =>
     isCurrency ? formatCurrency(value) : String(value);
@@ -150,6 +169,11 @@ export default async function PerformancePage() {
             sub={`${display(m.monthActual, m.isCurrency)} this month`}
           />
         ))}
+        <StatCard
+          label="Deal value closed"
+          value={formatCurrency(dealValueWeek)}
+          sub={`${formatCurrency(dealValueMonth)} this month · forecasting only, not revenue`}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

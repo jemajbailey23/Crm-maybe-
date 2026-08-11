@@ -173,6 +173,14 @@ export function InvoicesPanel({
             className="mt-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
+        <label className="flex items-center gap-1.5 pb-1.5 text-xs text-zinc-400" title="Bills for an ongoing/recurring service rather than a one-time charge">
+          <input
+            name="isRecurring"
+            type="checkbox"
+            className="h-3.5 w-3.5 rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500"
+          />
+          Recurring
+        </label>
         <button
           type="submit"
           disabled={pending}

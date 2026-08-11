@@ -167,8 +167,10 @@ model Contact {
   credentials Credential[]
   nextActions NextBestActionItem[]
 
-  knowledgeArticles KnowledgeArticle[]
-  aiQueryLogs       AiQueryLog[]
+  knowledgeArticles    KnowledgeArticle[]
+  failedPayments       FailedPayment[]
+  reconciliationAlerts ReconciliationAlert[]
+  aiQueryLogs          AiQueryLog[]
 }
 
 model Service {
@@ -191,6 +193,104 @@ model Service {
 
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String
+
+  mrrEvents ServiceMrrEvent[]
+}
+
+// One row per delivered Stripe webhook event, keyed by Stripe's own event
+// id. Checked (and inserted) before any event is processed — see
+// api/webhooks/stripe/route.ts — so a redelivered event (Stripe retries on
+// timeout/5xx, and can also just send the same event twice) is a no-op the
+// second time: no duplicate DB writes, and critically, no duplicate
+// automation firing (e.g. a second "invoice paid" email), which a plain
+// upsert alone doesn't prevent since upserts are safe for data but not for
+// side effects.
+model StripeEvent {
+  id          String   @id // Stripe event id, e.g. "evt_..." — the dedup key itself
+  type        String
+  processedAt DateTime @default(now())
+}
+
+// invoice.payment_failed / charge.failed — there was previously no record
+// of failed payment attempts at all. stripeChargeId is unique so a
+// redelivered failure webhook updates the same row instead of duplicating.
+model FailedPayment {
+  id              String   @id @default(cuid())
+  stripeChargeId  String?  @unique
+  stripeInvoiceId String?
+  amount          Float
+  reason          String?
+  occurredAt      DateTime @default(now())
+
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactId String?
+
+  @@index([contactId])
+  @@index([occurredAt])
+}
+
+enum MrrEventType {
+  NEW
+  EXPANSION
+  CONTRACTION
+  CHURN
+}
+
+// Recurring-revenue movement history. A Service only ever stores its
+// *current* amount, so New/Expansion/Contraction/Churned MRR can't be
+// computed from Service rows alone — this is the log that makes that
+// possible, written whenever syncStripeSubscription sees a subscription
+// created, its amount change, or it end. Recorded going forward only —
+// amount-change history from before this shipped can't be reconstructed,
+// see the Financials audit notes.
+model ServiceMrrEvent {
+  id          String       @id @default(cuid())
+  type        MrrEventType
+  amountDelta Float // positive for NEW/EXPANSION, negative for CONTRACTION/CHURN
+  occurredAt  DateTime     @default(now())
+
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId String
+
+  @@index([serviceId])
+  @@index([occurredAt])
+}
+
+enum ReconciliationAlertType {
+  STRIPE_PAYMENT_WITHOUT_INVOICE
+  INVOICE_PAID_WITHOUT_PAYMENT
+  REFUND_WITHOUT_TRANSACTION
+  DUPLICATE_EXTERNAL_ID
+  SUBSCRIPTION_STATUS_MISMATCH
+  DASHBOARD_TOTAL_MISMATCH
+}
+
+enum ReconciliationAlertStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
+// Surfaced on the Financials page. dedupeKey is unique so re-running the
+// reconciliation checks updates the same alert (and lets it self-resolve
+// when the underlying issue is fixed) instead of spawning a fresh
+// duplicate row every run.
+model ReconciliationAlert {
+  id         String                    @id @default(cuid())
+  type       ReconciliationAlertType
+  status     ReconciliationAlertStatus @default(OPEN)
+  message    String
+  dedupeKey  String                    @unique
+  detectedAt DateTime                  @default(now())
+  resolvedAt DateTime?
+
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactId String?
+
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceId String?
+
+  @@index([status])
 }
 
 model Invoice {
@@ -214,10 +314,18 @@ model Invoice {
   refundedAmount Float     @default(0)
   refundedAt     DateTime?
 
+  // True when this invoice bills a recurring subscription rather than a
+  // one-time charge — set automatically from Stripe's `invoice.subscription`
+  // field when synced, or toggled manually for hand-entered invoices. Lets
+  // "one-time revenue collected" and "recurring revenue collected" be
+  // computed as genuinely separate figures instead of guessed.
+  isRecurring Boolean @default(false)
+
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   contactId String
 
-  tasks Task[]
+  tasks                Task[]
+  reconciliationAlerts ReconciliationAlert[]
 }
 
 model ImportantLink {

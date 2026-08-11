@@ -4,7 +4,28 @@ import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import { StatCard } from "@/components/ui/stat-card";
 import { BarChart } from "@/components/ui/bar-chart";
 import { ProfitMarginControl } from "./profit-margin-control";
-import { isStripeConfigured, getStripeBalance } from "@/lib/stripe";
+import { ReconciliationAlertsPanel } from "./reconciliation-alerts-panel";
+import { isStripeConfigured } from "@/lib/stripe";
+import {
+  getFinancialMetrics,
+  cashCollected,
+  invoicedRevenue,
+  oneTimeRevenueCollected,
+  recurringRevenueCollected,
+  mrrAsOf,
+  newMrr,
+  expansionMrr,
+  contractionMrr,
+  churnedMrr,
+  netMrrGrowth,
+  outstandingInvoiceTotal,
+  overdueInvoiceTotal,
+  totalRefunds,
+  failedPaymentsSummary,
+  closedDealValue,
+  clientValueMetrics,
+  estimatedGrossProfit,
+} from "@/lib/finance-calculations";
 
 export const dynamic = "force-dynamic";
 
@@ -36,112 +57,76 @@ export default async function FinancialsPage() {
   const startOfLastMonth = startOfMonth(subMonths(now, 1));
   const endOfLastMonth = endOfMonth(subMonths(now, 1));
 
-  const [services, invoices, deals, totalClients, clientContacts, stripeBalance] = await Promise.all([
-    prisma.service.findMany({
-      select: { billingType: true, amount: true, createdAt: true, endedAt: true, stripeSubscriptionId: true },
+  // Every calculation below runs through finance-calculations.ts, the
+  // single documented source of truth for these formulas (see that file's
+  // header comment) — this page just fetches, calls the pure functions,
+  // and renders. Nothing here recomputes a formula independently.
+  const [metrics, clientContacts, openAlerts] = await Promise.all([
+    getFinancialMetrics(now),
+    prisma.contact.findMany({ where: { status: "CLIENT" }, select: { createdAt: true } }),
+    prisma.reconciliationAlert.findMany({
+      where: { status: "OPEN" },
+      orderBy: { detectedAt: "desc" },
+      select: { id: true, type: true, message: true, detectedAt: true, contactId: true, invoiceId: true },
     }),
-    prisma.invoice.findMany({
-      select: { amount: true, status: true, paidAt: true, refundedAmount: true },
-    }),
-    prisma.deal.findMany({
-      where: { stage: { in: ["WON", "LOST"] } },
-      select: { stage: true, oneTimeValue: true, mrrValue: true },
-    }),
-    prisma.contact.count({ where: { status: "CLIENT" } }),
-    prisma.contact.findMany({
-      where: { status: "CLIENT" },
-      select: { createdAt: true },
-    }),
-    getStripeBalance(),
   ]);
+  const { services, invoices, deals, mrrEvents, failedPayments, stripeBalance, pipeline } = metrics;
 
-  // Net amount actually kept from an invoice — a partial refund still counts
-  // as "paid," it just doesn't count as revenue for the refunded portion.
-  const netAmount = (i: { amount: number; refundedAmount: number }) => i.amount - i.refundedAmount;
+  // --- Collected revenue (paid invoices / Stripe — the source of truth) ---
+  const cashCollectedThisMonth = cashCollected(invoices, startOfThisMonth, endOfThisMonth);
+  const cashCollectedLastMonth = cashCollected(invoices, startOfLastMonth, endOfLastMonth);
+  const invoicedThisMonth = invoicedRevenue(invoices, startOfThisMonth, endOfThisMonth);
+  const oneTimeCollectedThisMonth = oneTimeRevenueCollected(invoices, startOfThisMonth, endOfThisMonth);
+  const recurringCollectedThisMonth = recurringRevenueCollected(invoices, startOfThisMonth, endOfThisMonth);
 
-  const mrrAsOf = (date: Date) =>
-    services
-      .filter(
-        (s) =>
-          s.billingType === "MONTHLY" &&
-          s.createdAt <= date &&
-          (s.endedAt === null || s.endedAt > date)
-      )
-      .reduce((sum, s) => sum + (s.amount ?? 0), 0);
-
-  const mrr = mrrAsOf(now);
-  const activeSubscriptionCount = services.filter(
-    (s) => s.billingType === "MONTHLY" && s.endedAt === null
-  ).length;
-  const stripeSubscriptionCount = services.filter(
-    (s) => s.stripeSubscriptionId && s.endedAt === null
-  ).length;
-
-  const outstandingInvoices = invoices.filter(
-    (i) => i.status === "SENT" || i.status === "OVERDUE"
-  );
-  const outstandingTotal = outstandingInvoices.reduce((sum, i) => sum + i.amount, 0);
-
-  const paidInThisMonth = invoices.filter(
-    (i) =>
-      i.status === "PAID" &&
-      i.paidAt &&
-      i.paidAt >= startOfThisMonth &&
-      i.paidAt <= endOfThisMonth
-  );
-  const paidInLastMonth = invoices.filter(
-    (i) =>
-      i.status === "PAID" &&
-      i.paidAt &&
-      i.paidAt >= startOfLastMonth &&
-      i.paidAt <= endOfLastMonth
-  );
-  const oneTimeThisMonth = paidInThisMonth.reduce((sum, i) => sum + netAmount(i), 0);
-  const oneTimeLastMonth = paidInLastMonth.reduce((sum, i) => sum + netAmount(i), 0);
-
-  const totalRefunded = invoices.reduce((sum, i) => sum + i.refundedAmount, 0);
-  const refundedInvoiceCount = invoices.filter((i) => i.refundedAmount > 0).length;
-
-  const monthlyRevenue = mrr + oneTimeThisMonth;
-  const lastMonthRevenue = mrrAsOf(endOfLastMonth) + oneTimeLastMonth;
   const revenueGrowth =
-    lastMonthRevenue > 0
-      ? Math.round(((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 1000) / 10
+    cashCollectedLastMonth > 0
+      ? Math.round(((cashCollectedThisMonth - cashCollectedLastMonth) / cashCollectedLastMonth) * 1000) / 10
       : null;
 
-  const profitEstimate = monthlyRevenue * (user.profitMarginPercent / 100);
+  // --- MRR + movement ---
+  const mrr = mrrAsOf(services, now);
+  const activeSubscriptionCount = services.filter((s) => s.billingType === "MONTHLY" && s.endedAt === null).length;
+  const newMrrThisMonth = newMrr(mrrEvents, startOfThisMonth, endOfThisMonth);
+  const expansionMrrThisMonth = expansionMrr(mrrEvents, startOfThisMonth, endOfThisMonth);
+  const contractionMrrThisMonth = contractionMrr(mrrEvents, startOfThisMonth, endOfThisMonth);
+  const churnedMrrThisMonth = churnedMrr(mrrEvents, startOfThisMonth, endOfThisMonth);
+  const netMrrGrowthThisMonth = netMrrGrowth(mrrEvents, startOfThisMonth, endOfThisMonth);
 
+  // --- Outstanding / overdue / refunds / failed payments ---
+  const outstandingTotal = outstandingInvoiceTotal(invoices);
+  const outstandingCount = invoices.filter((i) => i.status === "SENT" || i.status === "OVERDUE").length;
+  const overdueTotal = overdueInvoiceTotal(invoices, now);
+  const totalRefunded = totalRefunds(invoices);
+  const refundedInvoiceCount = invoices.filter((i) => i.refundedAmount > 0).length;
+  const failedSummary = failedPaymentsSummary(failedPayments);
+
+  // --- Estimated gross profit (renamed from "Profit estimate") ---
+  const grossProfit = estimatedGrossProfit(cashCollectedThisMonth, user.profitMarginPercent);
+
+  // --- Closed sales (Deal-based — forecasting/pipeline only, never revenue) ---
+  const closedDealValueThisMonth = closedDealValue(deals, startOfThisMonth, endOfThisMonth);
   const wonDeals = deals.filter((d) => d.stage === "WON");
   const lostDeals = deals.filter((d) => d.stage === "LOST");
-  const totalClosedSales = wonDeals.length;
   const proposalAcceptanceRate =
     wonDeals.length + lostDeals.length > 0
       ? Math.round((wonDeals.length / (wonDeals.length + lostDeals.length)) * 100)
       : null;
 
-  const paidInvoiceTotal = invoices
-    .filter((i) => i.status === "PAID")
-    .reduce((sum, i) => sum + netAmount(i), 0);
-  const wonDealTotal = wonDeals.reduce((sum, d) => sum + (d.oneTimeValue ?? 0) + (d.mrrValue ?? 0), 0);
-  const lifetimeClientValue = paidInvoiceTotal + wonDealTotal;
-  const averageClientValue = totalClients > 0 ? lifetimeClientValue / totalClients : null;
+  // --- Client value (collected revenue only, no deal double-counting) ---
+  const clientValue = clientValueMetrics(invoices);
 
   const months = last6Months(now);
   const monthlyRevenueData = months.map((m) => {
-    const paid = invoices.filter(
-      (i) => i.status === "PAID" && i.paidAt && i.paidAt >= m.start && i.paidAt <= m.end
-    );
-    const total = paid.reduce((sum, i) => sum + netAmount(i), 0);
-    return { label: m.label, value: total, display: formatCurrency(total) };
+    const value = cashCollected(invoices, m.start, m.end);
+    return { label: m.label, value, display: formatCurrency(value) };
   });
   const mrrGrowthData = months.map((m) => {
-    const value = mrrAsOf(m.end);
+    const value = mrrAsOf(services, m.end);
     return { label: m.label, value, display: formatCurrency(value) };
   });
   const monthlyClientsData = months.map((m) => {
-    const count = clientContacts.filter(
-      (c) => c.createdAt >= m.start && c.createdAt <= m.end
-    ).length;
+    const count = clientContacts.filter((c) => c.createdAt >= m.start && c.createdAt <= m.end).length;
     return { label: m.label, value: count, display: String(count) };
   });
 
@@ -172,73 +157,128 @@ export default async function FinancialsPage() {
         <ProfitMarginControl percent={user.profitMarginPercent} />
       </div>
 
+      {/* Primary metrics — collected revenue is the source of truth. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Monthly revenue" value={formatCurrency(monthlyRevenue)} sub="Recurring + invoices paid this month" />
+        <StatCard
+          label="Cash collected this month"
+          value={formatCurrency(cashCollectedThisMonth)}
+          sub="Paid invoices, net of refunds"
+        />
         <StatCard
           label="MRR"
           value={formatCurrency(mrr)}
-          sub={
-            stripeSubscriptionCount > 0
-              ? `${activeSubscriptionCount} active (${stripeSubscriptionCount} via Stripe)`
-              : `${activeSubscriptionCount} active subscriptions`
-          }
+          sub={`${activeSubscriptionCount} active subscriptions`}
+        />
+        <StatCard
+          label="Estimated Gross Profit"
+          value={formatCurrency(grossProfit)}
+          sub={`Estimate: ${user.profitMarginPercent}% of cash collected — not accounting profit`}
         />
         <StatCard
           label="Outstanding invoices"
           value={formatCurrency(outstandingTotal)}
-          sub={`${outstandingInvoices.length} unpaid`}
+          sub={`${outstandingCount} unpaid`}
         />
         <StatCard
-          label="Profit estimate"
-          value={formatCurrency(profitEstimate)}
-          sub={`${user.profitMarginPercent}% margin assumption`}
+          label="Overdue invoices"
+          value={formatCurrency(overdueTotal)}
+          sub="Past due date, unpaid"
         />
         <StatCard
           label="Revenue growth"
           value={revenueGrowth === null ? "—" : `${revenueGrowth > 0 ? "+" : ""}${revenueGrowth}%`}
-          sub="vs. last month"
+          sub="Cash collected vs. last month"
         />
         <StatCard
           label="Average client value"
-          value={averageClientValue === null ? "—" : formatCurrency(averageClientValue)}
-          sub="Lifetime value ÷ total clients"
+          value={clientValue.averageClientValue === null ? "—" : formatCurrency(clientValue.averageClientValue)}
+          sub="Collected revenue ÷ paying clients"
         />
         <StatCard
           label="Lifetime client value"
-          value={formatCurrency(lifetimeClientValue)}
-          sub="Won deals + paid invoices, all-time"
-        />
-        <StatCard
-          label="Total closed sales"
-          value={String(totalClosedSales)}
-          sub={formatCurrency(wonDealTotal)}
-        />
-        <StatCard
-          label="Proposal acceptance rate"
-          value={proposalAcceptanceRate === null ? "—" : `${proposalAcceptanceRate}%`}
-          sub={`${wonDeals.length} of ${wonDeals.length + lostDeals.length} decided`}
+          value={formatCurrency(clientValue.lifetimeClientValue)}
+          sub="Avg. collected revenue per client to date"
         />
         {stripeBalance && (
-          <StatCard
-            label="Stripe balance"
-            value={formatCurrency(stripeBalance.available)}
-            sub={
-              stripeBalance.pending > 0
-                ? `+ ${formatCurrency(stripeBalance.pending)} pending`
-                : "Available now"
-            }
-          />
+          <>
+            <StatCard
+              label="Stripe available balance"
+              value={formatCurrency(stripeBalance.available)}
+              sub="Ready to pay out"
+            />
+            <StatCard
+              label="Stripe pending balance"
+              value={formatCurrency(stripeBalance.pending)}
+              sub="Still clearing"
+            />
+          </>
         )}
         <StatCard
           label="Refunded"
           value={formatCurrency(totalRefunded)}
           sub={refundedInvoiceCount > 0 ? `${refundedInvoiceCount} invoice(s)` : "No refunds"}
         />
+        <StatCard
+          label="Failed payments"
+          value={String(failedSummary.count)}
+          sub={failedSummary.count > 0 ? `${formatCurrency(failedSummary.total)} attempted` : "None recorded"}
+        />
       </div>
+
+      {/* Revenue composition — one-time vs. recurring, billed vs. collected. */}
+      <div>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          Revenue composition (this month)
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard compact label="One-time collected" value={formatCurrency(oneTimeCollectedThisMonth)} />
+          <StatCard compact label="Recurring collected" value={formatCurrency(recurringCollectedThisMonth)} />
+          <StatCard compact label="Invoiced revenue" value={formatCurrency(invoicedThisMonth)} sub="Billed, may be unpaid" />
+          <StatCard compact label="Cash collected" value={formatCurrency(cashCollectedThisMonth)} sub="One-time + recurring" />
+        </div>
+      </div>
+
+      {/* MRR movement — New/Expansion/Contraction/Churn, tracked going forward from Stage 6. */}
+      <div>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          MRR movement (this month)
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <StatCard compact label="New MRR" value={formatCurrency(newMrrThisMonth)} />
+          <StatCard compact label="Expansion MRR" value={formatCurrency(expansionMrrThisMonth)} />
+          <StatCard compact label="Contraction MRR" value={formatCurrency(contractionMrrThisMonth)} />
+          <StatCard compact label="Churned MRR" value={formatCurrency(churnedMrrThisMonth)} />
+          <StatCard
+            compact
+            label="Net MRR growth"
+            value={`${netMrrGrowthThisMonth >= 0 ? "+" : ""}${formatCurrency(netMrrGrowthThisMonth)}`}
+          />
+        </div>
+      </div>
+
+      {/* Pipeline / closed sales — Deal-based, explicitly not revenue. */}
+      <div>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          Sales pipeline &amp; closed deals — forecasting only, not counted as revenue
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard compact label="Sales pipeline value" value={formatCurrency(pipeline.total)} />
+          <StatCard compact label="Weighted pipeline value" value={formatCurrency(pipeline.weighted)} />
+          <StatCard compact label="Closed deal value (this month)" value={formatCurrency(closedDealValueThisMonth)} />
+          <StatCard
+            compact
+            label="Proposal acceptance rate"
+            value={proposalAcceptanceRate === null ? "—" : `${proposalAcceptanceRate}%`}
+            sub={`${wonDeals.length} of ${wonDeals.length + lostDeals.length} decided`}
+          />
+        </div>
+      </div>
+
+      <ReconciliationAlertsPanel alerts={openAlerts} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <h2 className="mb-4 text-sm font-semibold text-zinc-100">Monthly revenue</h2>
+          <h2 className="mb-4 text-sm font-semibold text-zinc-100">Cash collected</h2>
           <BarChart data={monthlyRevenueData} />
         </div>
         <div className="animate-slide-up rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">

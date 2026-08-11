@@ -18,6 +18,7 @@ export async function addInvoice(
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const statusRaw = String(formData.get("status") ?? "").trim();
   const dueDateRaw = String(formData.get("dueDate") ?? "").trim();
+  const isRecurring = formData.get("isRecurring") === "on";
 
   if (!description) return { error: "Invoice description is required." };
   const amount = Number(amountRaw);
@@ -36,6 +37,10 @@ export async function addInvoice(
       issuedDate: status === "DRAFT" ? null : new Date(),
       dueDate: dueDateRaw ? new Date(dueDateRaw) : null,
       paidAt: status === "PAID" ? new Date() : null,
+      // Manually-entered invoices default to one-time unless the user
+      // flags them as billing for a recurring service — Stripe-synced
+      // invoices set this automatically from the subscription instead.
+      isRecurring,
     },
   });
 
