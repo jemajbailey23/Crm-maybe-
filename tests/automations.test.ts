@@ -20,6 +20,23 @@ const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
 );
 vi.stubGlobal("fetch", fetchMock);
 
+// PUSH_NOTIFICATION actions go through lib/push.ts's sendPushToUser, which
+// calls out via the web-push library — same mocking approach as
+// tests/push.test.ts.
+const sendNotification = vi.fn<
+  (subscription: { endpoint: string }, payload?: string) => Promise<{ statusCode: number }>
+>(async () => ({ statusCode: 201 }));
+vi.mock("web-push", () => ({
+  default: {
+    sendNotification: (...args: Parameters<typeof sendNotification>) => sendNotification(...args),
+    setVapidDetails: () => {},
+    WebPushError: class extends Error {},
+  },
+}));
+process.env.VAPID_PUBLIC_KEY = "test-public-key";
+process.env.VAPID_PRIVATE_KEY = "test-private-key";
+process.env.VAPID_SUBJECT = "mailto:test@example.com";
+
 // duplicateAutomationRule calls revalidatePath, which throws outside a real
 // Next.js request context — same fix as tests/contacts-import.test.ts.
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
@@ -58,6 +75,7 @@ async function makeContact(overrides: Partial<Parameters<typeof prisma.contact.c
 beforeEach(() => {
   sendMail.mockClear();
   fetchMock.mockClear();
+  sendNotification.mockClear();
 });
 
 afterAll(async () => {
@@ -65,6 +83,7 @@ afterAll(async () => {
   await prisma.automationRule.deleteMany({ where: { id: { in: createdRuleIds } } });
   await prisma.task.deleteMany({ where: { id: { in: createdTaskIds } } });
   await prisma.contact.deleteMany({ where: { id: { in: createdContactIds } } });
+  await prisma.pushSubscription.deleteMany({ where: { endpoint: { contains: RUN_ID } } });
 });
 
 describe("fireAutomationTrigger — multi-action rules", () => {
@@ -151,6 +170,70 @@ describe("fireAutomationTrigger — multi-action rules", () => {
   });
 });
 
+describe("fireAutomationTrigger — PUSH_NOTIFICATION action", () => {
+  it("substitutes tokens in the title/body and sends to the owner's registered devices", async () => {
+    const owner = await prisma.user.findFirstOrThrow();
+    await prisma.pushSubscription.deleteMany({ where: { userId: owner.id, endpoint: { contains: RUN_ID } } });
+    const sub = await prisma.pushSubscription.create({
+      data: {
+        endpoint: `https://push.example.com/${RUN_ID}-lead`,
+        p256dh: "test-p256dh",
+        auth: "test-auth",
+        userId: owner.id,
+      },
+    });
+
+    const contact = await makeContact();
+    const rule = await prisma.automationRule.create({
+      data: {
+        name: `Push on lead ${RUN_ID}`,
+        trigger: "LEAD_CREATED",
+        actions: {
+          create: [
+            { order: 0, actionType: "PUSH_NOTIFICATION", pushTitle: "New lead", pushBody: "{{name}} just came in." },
+          ],
+        },
+      },
+    });
+    createdRuleIds.push(rule.id);
+
+    await fireAutomationTrigger("LEAD_CREATED", { contactId: contact.id, summary: "New lead" });
+
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+    const [, payload] = sendNotification.mock.calls[0];
+    const body = JSON.parse(payload as string);
+    expect(body.title).toBe("New lead");
+    expect(body.body).toBe(`${contact.firstName} just came in.`);
+
+    const runs = await prisma.automationRun.findMany({ where: { ruleId: rule.id } });
+    expect(runs).toHaveLength(1);
+    expect(runs[0].status).toBe("SUCCESS");
+
+    await prisma.pushSubscription.delete({ where: { id: sub.id } });
+  });
+
+  it("fails loudly (and is logged as a failed run) when no devices are registered", async () => {
+    const owner = await prisma.user.findFirstOrThrow();
+    await prisma.pushSubscription.deleteMany({ where: { userId: owner.id } });
+
+    const rule = await prisma.automationRule.create({
+      data: {
+        name: `Push no devices ${RUN_ID}`,
+        trigger: "INVOICE_PAID",
+        actions: { create: [{ order: 0, actionType: "PUSH_NOTIFICATION", pushTitle: "Invoice paid" }] },
+      },
+    });
+    createdRuleIds.push(rule.id);
+
+    await fireAutomationTrigger("INVOICE_PAID", { summary: "Invoice paid" });
+
+    const runs = await prisma.automationRun.findMany({ where: { ruleId: rule.id } });
+    expect(runs).toHaveLength(1);
+    expect(runs[0].status).toBe("FAILED");
+    expect(runs[0].error).toMatch(/No devices registered/);
+  });
+});
+
 describe("runRuleActionsNow — manual test run", () => {
   it("redirects a CONTACT-recipient test email to the owner instead of the real contact", async () => {
     const contact = await makeContact({ email: `should-not-receive-${RUN_ID}@example.com` });
@@ -223,6 +306,40 @@ describe("runRuleActionsNow — manual test run", () => {
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.test).toBe(true);
+  });
+
+  it("prefixes a test-run push notification title with [Test]", async () => {
+    const owner = await prisma.user.findFirstOrThrow();
+    await prisma.pushSubscription.deleteMany({ where: { userId: owner.id, endpoint: { contains: RUN_ID } } });
+    const sub = await prisma.pushSubscription.create({
+      data: {
+        endpoint: `https://push.example.com/${RUN_ID}-testrun`,
+        p256dh: "test-p256dh",
+        auth: "test-auth",
+        userId: owner.id,
+      },
+    });
+
+    const rule = await prisma.automationRule.create({
+      data: {
+        name: `Test-run push ${RUN_ID}`,
+        trigger: "APPOINTMENT_NO_SHOW",
+        actions: { create: [{ order: 0, actionType: "PUSH_NOTIFICATION", pushTitle: "Sample alert" }] },
+      },
+    });
+    createdRuleIds.push(rule.id);
+
+    const results = await runRuleActionsNow(rule.id);
+    expect(results[0].ok).toBe(true);
+
+    const [, payload] = sendNotification.mock.calls[0];
+    const body = JSON.parse(payload as string);
+    expect(body.title).toBe("[Test] Sample alert");
+
+    const runs = await prisma.automationRun.findMany({ where: { ruleId: rule.id } });
+    expect(runs[0].isTest).toBe(true);
+
+    await prisma.pushSubscription.delete({ where: { id: sub.id } });
   });
 });
 

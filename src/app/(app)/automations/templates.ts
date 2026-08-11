@@ -21,10 +21,12 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
   {
     key: "welcome-new-lead",
     name: "Follow up on new leads fast",
-    description: "Creates a task to call a new lead within a day of them coming in.",
+    description:
+      "Creates a task to call a new lead within a day of them coming in, and pushes an alert to your phone/computer the moment they come in.",
     trigger: "LEAD_CREATED",
     actions: [
       { actionType: "CREATE_TASK", taskTitle: "Call new lead: {{name}}", taskDueInDays: 1 },
+      { actionType: "PUSH_NOTIFICATION", pushTitle: "New lead", pushBody: "{{name}} just came in." },
     ],
   },
   {
@@ -46,7 +48,8 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
   {
     key: "thank-after-payment",
     name: "Thank clients when they pay",
-    description: "Emails the contact a short thank-you the moment an invoice is marked paid.",
+    description:
+      "Emails the contact a short thank-you the moment an invoice is marked paid, and pushes an alert to your phone/computer so you know it landed.",
     trigger: "INVOICE_PAID",
     actions: [
       {
@@ -55,7 +58,15 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
         emailSubject: "Thank you for your payment",
         emailBody: "Hi {{name}},\n\nThanks — your payment has been received. Appreciate you!",
       },
+      { actionType: "PUSH_NOTIFICATION", pushTitle: "Invoice paid", pushBody: "{{name}} just paid an invoice." },
     ],
+  },
+  {
+    key: "notify-overdue-task-push",
+    name: "Push alert for overdue tasks",
+    description: "Sends a push notification to your phone/computer whenever an open task's due date passes.",
+    trigger: "TASK_OVERDUE",
+    actions: [{ actionType: "PUSH_NOTIFICATION", pushTitle: "Task overdue" }],
   },
   {
     key: "ask-for-review",

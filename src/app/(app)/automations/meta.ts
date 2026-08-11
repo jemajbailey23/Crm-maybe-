@@ -48,12 +48,13 @@ export const TRIGGER_DESCRIPTION: Record<AutomationTrigger, string> = {
   APPOINTMENT_NO_SHOW: "You mark a booking as a no-show.",
 };
 
-export const ACTION_TYPES: AutomationActionType[] = ["CREATE_TASK", "SEND_EMAIL", "WEBHOOK"];
+export const ACTION_TYPES: AutomationActionType[] = ["CREATE_TASK", "SEND_EMAIL", "WEBHOOK", "PUSH_NOTIFICATION"];
 
 export const ACTION_LABEL: Record<AutomationActionType, string> = {
   CREATE_TASK: "Create a task",
   SEND_EMAIL: "Send an email",
   WEBHOOK: "Call a webhook URL",
+  PUSH_NOTIFICATION: "Send me a push notification",
 };
 
 export const EMAIL_RECIPIENTS: AutomationEmailRecipient[] = ["OWNER", "CONTACT"];
@@ -70,6 +71,7 @@ type ActionSummaryInput = {
   emailRecipient: AutomationEmailRecipient;
   emailSubject: string | null;
   webhookUrl: string | null;
+  pushTitle: string | null;
 };
 
 export function actionSummary(action: ActionSummaryInput) {
@@ -79,6 +81,9 @@ export function actionSummary(action: ActionSummaryInput) {
   if (action.actionType === "SEND_EMAIL") {
     const who = action.emailRecipient === "CONTACT" ? "the contact" : "you";
     return `Email ${who}${action.emailSubject ? `: "${action.emailSubject}"` : ""}`;
+  }
+  if (action.actionType === "PUSH_NOTIFICATION") {
+    return `Notify me${action.pushTitle ? `: "${action.pushTitle}"` : ""}`;
   }
   return `POST to ${action.webhookUrl || "(no URL set)"}`;
 }
@@ -90,10 +95,10 @@ export function actionsSummary(actions: ActionSummaryInput[]) {
   return actions.map(actionSummary).join(" → ");
 }
 
-// {{token}} placeholders usable in an email action's subject/body, shown as
-// clickable chips next to those fields so you don't have to remember or
-// guess the exact syntax.
-export const EMAIL_TOKENS: { token: string; description: string }[] = [
+// {{token}} placeholders usable in a task title, email subject/body, or
+// push notification title/body, shown as clickable chips next to those
+// fields so you don't have to remember or guess the exact syntax.
+export const AUTOMATION_TOKENS: { token: string; description: string }[] = [
   { token: "{{name}}", description: "Contact's first name (or business name)" },
   { token: "{{email}}", description: "Contact's email address" },
   { token: "{{date}}", description: "The event's date/time, for triggers that involve one" },

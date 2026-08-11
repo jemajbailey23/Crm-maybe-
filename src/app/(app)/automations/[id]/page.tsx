@@ -101,6 +101,8 @@ export default async function AutomationDetailPage({
             emailSubject: a.emailSubject,
             emailBody: a.emailBody,
             webhookUrl: a.webhookUrl,
+            pushTitle: a.pushTitle,
+            pushBody: a.pushBody,
           })),
         }}
       />

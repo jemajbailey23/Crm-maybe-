@@ -10,7 +10,7 @@ import {
   ACTION_LABEL,
   EMAIL_RECIPIENTS,
   EMAIL_RECIPIENT_LABEL,
-  EMAIL_TOKENS,
+  AUTOMATION_TOKENS,
 } from "./meta";
 import type { AutomationActionType, AutomationEmailRecipient, AutomationTrigger } from "@prisma/client";
 
@@ -30,6 +30,8 @@ export type ActionDefaults = {
   emailSubject?: string | null;
   emailBody?: string | null;
   webhookUrl?: string | null;
+  pushTitle?: string | null;
+  pushBody?: string | null;
 };
 
 type ActionRow = ActionDefaults & { key: string };
@@ -48,7 +50,7 @@ function insertTokenInto(fieldId: string, token: string) {
 function TokenPicker({ fieldId }: { fieldId: string }) {
   return (
     <div className="mt-1.5 flex flex-wrap gap-1.5">
-      {EMAIL_TOKENS.map((t) => (
+      {AUTOMATION_TOKENS.map((t) => (
         <button
           key={t.token}
           type="button"
@@ -75,6 +77,8 @@ function ActionFields({
   const taskTitleId = `action-${index}-taskTitle-field`;
   const subjectId = `action-${index}-emailSubject-field`;
   const bodyId = `action-${index}-emailBody-field`;
+  const pushTitleId = `action-${index}-pushTitle-field`;
+  const pushBodyId = `action-${index}-pushBody-field`;
 
   return (
     <div>
@@ -196,6 +200,41 @@ function ActionFields({
             A JSON payload is POSTed here — trigger, rule name, event summary, and linked contact ID
             — so you can wire this into Zapier, Make, n8n, or your own endpoint.
           </p>
+        </div>
+      )}
+
+      {action.actionType === "PUSH_NOTIFICATION" && (
+        <div className="mt-4 space-y-4">
+          <p className="text-xs text-zinc-500">
+            Sent to every device registered under Settings → Notifications. Set that up first if
+            you haven&apos;t — there&apos;s nothing to send to otherwise.
+          </p>
+          <div>
+            <label className={labelClass}>Title</label>
+            <input
+              id={pushTitleId}
+              name={`action-${index}-pushTitle`}
+              defaultValue={action.pushTitle ?? ""}
+              placeholder="Leave blank to use this automation's name"
+              className={inputClass}
+            />
+            <TokenPicker fieldId={pushTitleId} />
+          </div>
+          <div>
+            <label className={labelClass}>Message</label>
+            <textarea
+              id={pushBodyId}
+              name={`action-${index}-pushBody`}
+              rows={2}
+              defaultValue={action.pushBody ?? ""}
+              placeholder="New lead: {{name}}"
+              className={inputClass}
+            />
+            <TokenPicker fieldId={pushBodyId} />
+            <p className="mt-1.5 text-xs text-zinc-500">
+              Leave blank to use the event&apos;s own description.
+            </p>
+          </div>
         </div>
       )}
     </div>

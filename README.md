@@ -38,6 +38,7 @@ This app deploys to **Vercel**, backed by a **Supabase** Postgres database.
    - `CREDENTIAL_ENCRYPTION_KEY` — required for the client Secure Credential Vault (`openssl rand -hex 32`); back this up somewhere safe, since losing it makes stored credentials unrecoverable
    - `ANTHROPIC_API_KEY` — optional, powers the AI Assistant (get one at [console.anthropic.com](https://console.anthropic.com/settings/keys))
    - `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — optional, syncs Stripe invoices automatically (see [Stripe billing sync](#stripe-billing-sync) below)
+   - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` — optional, lets the CRM send browser push notifications (see [Push notifications](#push-notifications) below)
 4. **Deploy.** The build command (`prisma migrate deploy && next build`) automatically applies the database schema on every deploy using `DIRECT_URL` — no manual migration step needed.
 5. Visit the deployed URL and create your account on the first-run signup page.
 
@@ -79,6 +80,25 @@ Beyond invoices, the sync also covers:
 - **Account balance** — your available + pending Stripe balance shows on Financials.
 - **Refunds** — if you issue a refund/credit note against a paid invoice in Stripe, the refunded amount is netted out of that invoice's total everywhere it's shown (Billing tab, Financials, Dashboard).
 - **Subscriptions** — a Stripe Subscription is synced into the client's Billing tab as a recurring Service and counts toward MRR automatically; canceling it in Stripe ends it here too (the history stays, so past months' MRR still calculates correctly).
+
+## Push notifications
+
+The CRM can send real browser push notifications straight to your phone or computer — no separate app, no per-message cost. Wire it into an automation (Automations → a "Send me a push notification" step) for things like a new lead coming in or an invoice getting paid, and enable it on every device you want alerts on from **Settings → Notifications**.
+
+**Setup (one-time):**
+
+1. Generate a VAPID key pair: `npx web-push generate-vapid-keys`.
+2. Set `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` to the values it prints.
+3. Set `VAPID_SUBJECT` to a `mailto:` address push services can contact if something's wrong with your usage (e.g. `mailto:you@example.com`).
+4. Redeploy, then go to **Settings → Notifications** and click **Enable on this device** on every phone/computer you want alerts on — a laptop and a phone can both be registered at once.
+
+Without these variables set, the Notifications section shows a clear "not configured" message instead of a broken button, and any push automation action fails loudly (logged in that automation's run history) rather than silently doing nothing.
+
+**Platform notes:**
+
+- Works out of the box on desktop Chrome/Firefox/Edge/Safari and Android.
+- **iPhone/iPad**: Safari only allows push notifications for sites added to the Home Screen (Share → Add to Home Screen) — this is an Apple restriction on all websites, not specific to this app.
+- A push action always notifies your own registered devices — there's no "send to a contact" option, since contacts don't have a device of ours to push to (that's what the email action is for).
 
 ## Stack
 

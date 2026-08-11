@@ -24,6 +24,8 @@ type ParsedAction = {
   emailSubject: string | null;
   emailBody: string | null;
   webhookUrl: string | null;
+  pushTitle: string | null;
+  pushBody: string | null;
 };
 
 function parseAction(formData: FormData, i: number): ParsedAction {
@@ -44,6 +46,8 @@ function parseAction(formData: FormData, i: number): ParsedAction {
     emailSubject: str(formData, `action-${i}-emailSubject`),
     emailBody: str(formData, `action-${i}-emailBody`),
     webhookUrl: str(formData, `action-${i}-webhookUrl`),
+    pushTitle: str(formData, `action-${i}-pushTitle`),
+    pushBody: str(formData, `action-${i}-pushBody`),
   };
 }
 
@@ -82,6 +86,8 @@ function actionCreateData(a: ParsedAction, order: number) {
     emailSubject: a.emailSubject,
     emailBody: a.emailBody,
     webhookUrl: a.webhookUrl,
+    pushTitle: a.pushTitle,
+    pushBody: a.pushBody,
   };
 }
 

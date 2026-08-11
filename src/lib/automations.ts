@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { sendAutomationEmail, isMailConfigured } from "@/lib/mail";
+import { sendPushToUser } from "@/lib/push";
 import type { AutomationTrigger, AutomationAction, Contact, User } from "@prisma/client";
 
 type TriggerContext = {
@@ -123,6 +124,23 @@ async function runOneAction(
         ...(opts.isTest ? { test: true } : {}),
         ...context.payload,
       }),
+    });
+  } else if (action.actionType === "PUSH_NOTIFICATION") {
+    // Always goes to the owner's own registered devices — there's no
+    // recipient choice like SEND_EMAIL has, since a contact has no device
+    // of ours to push to. sendPushToUser throws its own clear error when
+    // VAPID isn't configured or no device is registered yet, so there's
+    // nothing to pre-check here.
+    if (!owner) {
+      throw new Error("No owner account to notify");
+    }
+    const tokens = contactTokens(contact, context.variables);
+    const title = (opts.isTest ? "[Test] " : "") + substituteTokens(action.pushTitle?.trim() || ruleName, tokens);
+    const body = substituteTokens(action.pushBody?.trim() || context.summary, tokens);
+    await sendPushToUser(owner.id, {
+      title,
+      body,
+      url: contact ? `/contacts/${contact.id}` : "/dashboard",
     });
   }
 }

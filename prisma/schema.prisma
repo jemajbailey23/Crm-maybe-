@@ -52,6 +52,24 @@ model User {
   articleRevisions    KnowledgeArticleRevision[]
   aiQueryLogs         AiQueryLog[]
   ownedProjects       Project[]
+  pushSubscriptions   PushSubscription[]
+}
+
+// One browser push subscription per device (phone, laptop, etc.) — a
+// single owner can have several, so alerts reach every registered device
+// at once. endpoint is unique because re-subscribing the same
+// browser/device (e.g. after clearing site data) issues a fresh one, and
+// browsers occasionally rotate it out from under an existing subscription.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String // subscription's public key, for payload encryption
+  auth      String // subscription's auth secret, for payload encryption
+  userAgent String? // shown in Settings so devices are identifiable ("Chrome on macOS")
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
 }
 
 model PasswordResetToken {
@@ -1149,6 +1167,7 @@ enum AutomationActionType {
   CREATE_TASK
   SEND_EMAIL
   WEBHOOK
+  PUSH_NOTIFICATION
 }
 
 // Who a SEND_EMAIL action's message goes to. OWNER (the default, and the
@@ -1187,10 +1206,10 @@ model AutomationRule {
 // fields the single-action AutomationRule used to hold, just scoped to one
 // action instead of the whole rule.
 model AutomationAction {
-  id        String               @id @default(cuid())
-  order     Int                  @default(0)
+  id         String               @id @default(cuid())
+  order      Int                  @default(0)
   actionType AutomationActionType
-  createdAt DateTime             @default(now())
+  createdAt  DateTime             @default(now())
 
   // CREATE_TASK config
   taskTitle     String?
@@ -1203,6 +1222,12 @@ model AutomationAction {
 
   // WEBHOOK config
   webhookUrl String?
+
+  // PUSH_NOTIFICATION config — always goes to the owner's own registered
+  // devices (PushSubscription), so there's no recipient field like
+  // SEND_EMAIL has; contacts don't have devices to notify.
+  pushTitle String?
+  pushBody  String?
 
   rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   ruleId String
@@ -1228,8 +1253,8 @@ model AutomationRun {
   // Denormalized alongside actionId so "all runs for this rule" doesn't
   // need to join through actions — kept in sync at write time since a run
   // is only ever created for one specific rule+action pair together.
-  rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  ruleId String
+  rule     AutomationRule   @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  ruleId   String
 }
 
 // Custom display label for one of the fixed DealStage values. The stage set

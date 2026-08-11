@@ -8,7 +8,9 @@ import { StageThresholdInput } from "./stage-threshold-input";
 import { SimpleListManager } from "./simple-list-manager";
 import { BrandColorPicker } from "./brand-color-picker";
 import { LandingPageSelect } from "./landing-page-select";
+import { PushNotificationSettings } from "./push-notifications";
 import { addServiceType, deleteServiceType, addTaskLabel, deleteTaskLabel } from "./actions";
+import { describeUserAgent } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -51,12 +53,20 @@ function LinkOutCard({ title, description, href, cta }: {
 export default async function SettingsPage() {
   const user = await requireUser();
 
-  const [stageLabels, stageThresholds, serviceTypes, taskLabels] = await Promise.all([
+  const [stageLabels, stageThresholds, serviceTypes, taskLabels, pushSubscriptions] = await Promise.all([
     getStageLabels(),
     getStageThresholds(),
     prisma.serviceType.findMany({ orderBy: { name: "asc" } }),
     prisma.taskLabelPreset.findMany({ orderBy: { name: "asc" } }),
+    prisma.pushSubscription.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
   ]);
+
+  const pushDevices = pushSubscriptions.map((s) => ({
+    id: s.id,
+    endpoint: s.endpoint,
+    label: describeUserAgent(s.userAgent),
+    addedLabel: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(s.createdAt),
+  }));
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -151,6 +161,13 @@ export default async function SettingsPage() {
         href="/knowledge?category=PROPOSAL_TEMPLATES"
         cta="Manage proposal templates"
       />
+
+      <SettingsSection
+        title="Notifications"
+        description="Get a push notification on your phone or computer for things like a new lead or a paid invoice. Enable it on every device you want alerts on — a phone and a laptop can both be registered at once. Configure which events trigger a notification from the Automations page."
+      >
+        <PushNotificationSettings vapidPublicKey={process.env.VAPID_PUBLIC_KEY ?? null} devices={pushDevices} />
+      </SettingsSection>
 
       <SettingsSection
         title="Brand colors"
