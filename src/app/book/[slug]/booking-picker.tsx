@@ -25,12 +25,30 @@ function useIsClient() {
   );
 }
 
+// Generated once per page load and resubmitted unchanged on every attempt
+// (including a retried/double-clicked submit) — the server treats a
+// repeated key as "already done" instead of creating a second booking.
+// crypto.randomUUID() only exists in a secure (client) context, which is
+// exactly where this runs.
+function useIdempotencyKey() {
+  const [key] = useState(() => (typeof crypto !== "undefined" ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`));
+  return key;
+}
+
+type Question = { id: string; label: string; required: boolean };
+
 export function BookingPicker({
+  meetingTypeSlug,
   slots,
   slotMinutes,
+  questions,
+  cancellationPolicy,
 }: {
+  meetingTypeSlug: string;
   slots: string[];
   slotMinutes: number;
+  questions: Question[];
+  cancellationPolicy: string | null;
 }) {
   const days = useMemo(() => {
     const groups = new Map<string, Date[]>();
@@ -46,10 +64,9 @@ export function BookingPicker({
 
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
-  const [state, formAction, pending] = useActionState(
-    createBooking,
-    initialState
-  );
+  const action = createBooking.bind(null, meetingTypeSlug);
+  const [state, formAction, pending] = useActionState(action, initialState);
+  const idempotencyKey = useIdempotencyKey();
 
   const mounted = useIsClient();
 
@@ -75,6 +92,14 @@ export function BookingPicker({
         <p className="mt-1 text-sm text-zinc-500">
           Check your email for confirmation.
         </p>
+        {state.manageUrl && (
+          <p className="mt-3 text-xs text-zinc-600">
+            Need to make a change?{" "}
+            <a href={state.manageUrl} className="text-indigo-400 hover:text-indigo-300">
+              Manage your booking
+            </a>
+          </p>
+        )}
       </div>
     );
   }
@@ -151,6 +176,7 @@ export function BookingPicker({
           className="animate-slide-up space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6"
         >
           <input type="hidden" name="startsAt" value={selectedSlot.toISOString()} />
+          <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
           <input
             type="hidden"
             name="visitorTimezone"
@@ -186,6 +212,29 @@ export function BookingPicker({
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-300">
+              Company <span className="text-zinc-600">(optional)</span>
+            </label>
+            <input
+              name="companyName"
+              className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+
+          {questions.map((q) => (
+            <div key={q.id}>
+              <label className="block text-sm font-medium text-zinc-300">
+                {q.label} {!q.required && <span className="text-zinc-600">(optional)</span>}
+              </label>
+              <input
+                name={`intake_${q.id}`}
+                required={q.required}
+                className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+          ))}
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300">
               What would you like to talk about? (optional)
             </label>
             <textarea
@@ -194,6 +243,9 @@ export function BookingPicker({
               className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
+          {cancellationPolicy && (
+            <p className="text-xs text-zinc-600">{cancellationPolicy}</p>
+          )}
           {state?.error && (
             <p className="text-sm text-red-400" aria-live="polite">
               {state.error}

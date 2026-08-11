@@ -10,6 +10,10 @@ export const TRIGGERS: AutomationTrigger[] = [
   "REVIEW_REQUEST",
   "MISSED_CALL",
   "APPOINTMENT_BOOKED",
+  "APPOINTMENT_RESCHEDULED",
+  "APPOINTMENT_CANCELLED",
+  "APPOINTMENT_COMPLETED",
+  "APPOINTMENT_NO_SHOW",
 ];
 
 export const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
@@ -22,6 +26,10 @@ export const TRIGGER_LABEL: Record<AutomationTrigger, string> = {
   REVIEW_REQUEST: "Review Request",
   MISSED_CALL: "Missed Call",
   APPOINTMENT_BOOKED: "Appointment Booked",
+  APPOINTMENT_RESCHEDULED: "Appointment Rescheduled",
+  APPOINTMENT_CANCELLED: "Appointment Cancelled",
+  APPOINTMENT_COMPLETED: "Appointment Completed",
+  APPOINTMENT_NO_SHOW: "Appointment No-Show",
 };
 
 export const TRIGGER_DESCRIPTION: Record<AutomationTrigger, string> = {
@@ -34,6 +42,10 @@ export const TRIGGER_DESCRIPTION: Record<AutomationTrigger, string> = {
   REVIEW_REQUEST: "Any project is marked Completed — a good moment to ask for a review.",
   MISSED_CALL: 'A Call activity is logged with "Missed call" checked.',
   APPOINTMENT_BOOKED: "Someone books a call through your public booking page.",
+  APPOINTMENT_RESCHEDULED: "A visitor reschedules their own booking.",
+  APPOINTMENT_CANCELLED: "A booking is cancelled, by the visitor or by you.",
+  APPOINTMENT_COMPLETED: "You mark a booking as completed.",
+  APPOINTMENT_NO_SHOW: "You mark a booking as a no-show.",
 };
 
 export const ACTION_TYPES: AutomationActionType[] = ["CREATE_TASK", "SEND_EMAIL", "WEBHOOK"];

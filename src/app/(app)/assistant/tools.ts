@@ -145,7 +145,7 @@ async function getTodaysSummary() {
       select: { title: true, dueDate: true, priority: true },
     }),
     prisma.booking.findMany({
-      where: { startsAt: { gte: start, lte: end } },
+      where: { status: "CONFIRMED", startsAt: { gte: start, lte: end } },
       orderBy: { startsAt: "asc" },
       select: { name: true, startsAt: true, email: true },
     }),

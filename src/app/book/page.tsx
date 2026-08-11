@@ -1,34 +1,22 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { generateAvailableSlots, type AvailabilityRule } from "@/lib/availability";
-import { BookingPicker } from "./booking-picker";
 
-// Availability depends on live data (current time, existing bookings) —
-// never prerender this at build time.
+// Meeting-type list depends on live data — never prerender at build time.
 export const dynamic = "force-dynamic";
 
-export default async function BookPage() {
-  const owner = await prisma.user.findFirst();
+export default async function BookLandingPage() {
+  const types = await prisma.meetingType.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: "asc" },
+  });
 
-  if (!owner) {
-    return (
-      <div className="flex flex-1 items-center justify-center px-4 py-16 text-center">
-        <p className="text-sm text-zinc-500">Booking isn&apos;t set up yet.</p>
-      </div>
-    );
+  // Preserves the original single-flow booking page design: with only one
+  // active meeting type, skip straight to it instead of making a visitor
+  // choose from a list of one.
+  if (types.length === 1) {
+    redirect(`/book/${types[0].slug}`);
   }
-
-  const rules = (owner.weeklyAvailability as unknown as AvailabilityRule[] | null) ?? [];
-  const existingBookings = await prisma.booking.findMany({
-    where: { startsAt: { gte: new Date() } },
-    select: { startsAt: true, endsAt: true },
-  });
-
-  const slots = generateAvailableSlots({
-    rules,
-    slotMinutes: owner.bookingSlotMinutes,
-    timezone: owner.bookingTimezone,
-    existingBookings,
-  });
 
   return (
     <div className="flex flex-1 justify-center px-4 py-12">
@@ -38,14 +26,30 @@ export default async function BookPage() {
             BV
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
-            Book Your Free Growth Audit
+            Book time with us
           </h1>
           <p className="mt-1 text-sm text-zinc-500">Bailey Ventures Digital</p>
         </div>
-        <BookingPicker
-          slots={slots.map((s) => s.toISOString())}
-          slotMinutes={owner.bookingSlotMinutes}
-        />
+
+        {types.length === 0 ? (
+          <p className="text-center text-sm text-zinc-500">
+            No meeting types are available right now — check back soon.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {types.map((type) => (
+              <Link
+                key={type.id}
+                href={`/book/${type.slug}`}
+                className="block rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition-colors hover:border-indigo-500/40 hover:bg-zinc-900"
+              >
+                <p className="font-medium text-zinc-100">{type.name}</p>
+                {type.description && <p className="mt-1 text-sm text-zinc-500">{type.description}</p>}
+                <p className="mt-2 text-xs text-zinc-600">{type.durationMinutes} min</p>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

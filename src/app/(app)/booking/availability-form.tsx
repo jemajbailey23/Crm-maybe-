@@ -1,126 +1,44 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { updateAvailability, type AvailabilityState } from "./actions";
-import {
-  WEEKDAY_LABELS,
-  COMMON_TIMEZONES,
-  type AvailabilityRule,
-} from "@/lib/availability";
+import { COMMON_TIMEZONES, type AvailabilityRule } from "@/lib/availability";
+import { WeeklyAvailabilityFields, useWeeklyAvailability } from "./weekly-availability-fields";
 
 const initialState: AvailabilityState = {};
 
 export function AvailabilityForm({
   rules,
-  slotMinutes,
   timezone,
 }: {
   rules: AvailabilityRule[];
-  slotMinutes: number;
   timezone: string;
 }) {
-  const [state, formAction, pending] = useActionState(
-    updateAvailability,
-    initialState
-  );
-
-  const [days, setDays] = useState(() =>
-    Array.from({ length: 7 }, (_, day) => {
-      const rule = rules.find((r) => r.dayOfWeek === day);
-      return {
-        enabled: Boolean(rule),
-        start: rule?.start ?? "09:00",
-        end: rule?.end ?? "17:00",
-      };
-    })
-  );
+  const [state, formAction, pending] = useActionState(updateAvailability, initialState);
+  const [days, setDays] = useWeeklyAvailability(rules);
 
   return (
     <form action={formAction} className="space-y-6">
-      <div className="space-y-2">
-        {days.map((day, i) => (
-          <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
-            <label className="flex w-24 shrink-0 items-center gap-2 text-zinc-300 sm:w-32">
-              <input
-                type="checkbox"
-                name={`enabled-${i}`}
-                checked={day.enabled}
-                onChange={(e) =>
-                  setDays((prev) =>
-                    prev.map((d, idx) =>
-                      idx === i ? { ...d, enabled: e.target.checked } : d
-                    )
-                  )
-                }
-                className="rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500"
-              />
-              {WEEKDAY_LABELS[i]}
-            </label>
-            <input
-              type="time"
-              name={`start-${i}`}
-              value={day.start}
-              disabled={!day.enabled}
-              onChange={(e) =>
-                setDays((prev) =>
-                  prev.map((d, idx) =>
-                    idx === i ? { ...d, start: e.target.value } : d
-                  )
-                )
-              }
-              className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40"
-            />
-            <span className="text-zinc-600">to</span>
-            <input
-              type="time"
-              name={`end-${i}`}
-              value={day.end}
-              disabled={!day.enabled}
-              onChange={(e) =>
-                setDays((prev) =>
-                  prev.map((d, idx) =>
-                    idx === i ? { ...d, end: e.target.value } : d
-                  )
-                )
-              }
-              className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40"
-            />
-          </div>
-        ))}
-      </div>
+      <WeeklyAvailabilityFields namePrefix="" days={days} onChange={setDays} />
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-zinc-300">
-            Call length
-          </label>
-          <select
-            name="slotMinutes"
-            defaultValue={slotMinutes}
-            className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            <option value={15}>15 minutes</option>
-            <option value={30}>30 minutes</option>
-            <option value={45}>45 minutes</option>
-            <option value={60}>60 minutes</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-zinc-300">
-            Your timezone
-          </label>
-          <select
-            name="timezone"
-            defaultValue={timezone}
-            className="mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            {COMMON_TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-zinc-300">
+          Your timezone
+        </label>
+        <select
+          name="timezone"
+          defaultValue={timezone}
+          className="mt-1 block w-full max-w-xs rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        >
+          {COMMON_TIMEZONES.map((tz) => (
+            <option key={tz} value={tz}>
+              {tz}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-zinc-600">
+          Each meeting type sets its own call length and can optionally override these hours.
+        </p>
       </div>
 
       {state?.error && (

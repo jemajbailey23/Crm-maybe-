@@ -323,6 +323,30 @@ export function AiEnabledBadge({ enabled }: { enabled: boolean }) {
   );
 }
 
+const BOOKING_STATUS_VARIANT: Record<string, BadgeVariant> = {
+  CONFIRMED: "blue",
+  CANCELLED: "red",
+  COMPLETED: "emerald",
+  NO_SHOW: "amber",
+  RESCHEDULED: "violet",
+};
+
+const BOOKING_STATUS_LABEL: Record<string, string> = {
+  CONFIRMED: "Confirmed",
+  CANCELLED: "Cancelled",
+  COMPLETED: "Completed",
+  NO_SHOW: "No-show",
+  RESCHEDULED: "Rescheduled",
+};
+
+export function BookingStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={BOOKING_STATUS_VARIANT[status] ?? "default"}>
+      {BOOKING_STATUS_LABEL[status] ?? status}
+    </Badge>
+  );
+}
+
 export function LabelChips({ labels }: { labels: string | null | undefined }) {
   const items = (labels ?? "")
     .split(",")

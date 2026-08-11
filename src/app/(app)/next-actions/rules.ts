@@ -93,7 +93,7 @@ export async function computeNextBestActionCandidates(now: Date): Promise<NBACan
       select: { id: true, firstName: true, lastName: true, businessName: true, nextFollowUpAt: true },
     }),
     prisma.booking.findMany({
-      where: { contactId: { not: null } },
+      where: { contactId: { not: null }, status: { not: "CANCELLED" } },
       select: { id: true, startsAt: true, name: true, contactId: true },
       orderBy: { startsAt: "desc" },
     }),

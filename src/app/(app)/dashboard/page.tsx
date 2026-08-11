@@ -5,6 +5,7 @@ import { syncNextBestActions } from "../next-actions/sync";
 import { getTopActiveNextActions } from "../next-actions/query";
 import { NextBestActionsPanel } from "./next-best-actions-panel";
 import { checkOverdueTasks } from "@/lib/automations";
+import { sendDueBookingReminders } from "@/lib/booking-notify";
 import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
 import { startOfDayInZone, endOfDayInZone, startOfMonthInZone } from "@/lib/timezone";
 import { getSalesPipelineStats } from "./sales-pipeline";
@@ -23,6 +24,10 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const user = await requireUser();
   await checkOverdueTasks();
+  // No background scheduler exists in this app (see checkOverdueTasks
+  // above for the same established pattern) — reminders are swept
+  // opportunistically on every real dashboard visit instead.
+  await sendDueBookingReminders();
   const STAGES = stageOptions(await getStageLabels());
 
   const now = new Date();
@@ -65,7 +70,7 @@ export default async function DashboardPage() {
       where: { type: "CALL", occurredAt: { gte: startOfToday, lte: endOfToday } },
     }),
     prisma.booking.count({
-      where: { startsAt: { gte: startOfToday, lte: endOfToday } },
+      where: { status: "CONFIRMED", startsAt: { gte: startOfToday, lte: endOfToday } },
     }),
     prisma.task.count({ where: { status: { notIn: ["COMPLETED", "CANCELLED"] } } }),
     prisma.task.findMany({
@@ -84,7 +89,7 @@ export default async function DashboardPage() {
       },
     }),
     prisma.booking.findMany({
-      where: { startsAt: { gte: now } },
+      where: { status: "CONFIRMED", startsAt: { gte: now } },
       orderBy: { startsAt: "asc" },
       take: 5,
       include: { contact: true },

@@ -1,18 +1,14 @@
 import "server-only";
-import { randomBytes, createHash } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { generateToken, hashToken } from "@/lib/tokens";
 
 const SESSION_COOKIE = "crm_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30; // 30 days
 const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000; // 1 hour
-
-function hashToken(token: string) {
-  return createHash("sha256").update(token).digest("hex");
-}
 
 function getSecretKey() {
   const secret = process.env.AUTH_SECRET;
@@ -80,7 +76,7 @@ export async function requireUser() {
 }
 
 export async function createPasswordResetToken(userId: string) {
-  const rawToken = randomBytes(32).toString("hex");
+  const rawToken = generateToken();
 
   await prisma.passwordResetToken.deleteMany({ where: { userId } });
   await prisma.passwordResetToken.create({

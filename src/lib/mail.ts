@@ -55,6 +55,8 @@ export async function sendBookingOwnerNotification(
     startsAt: Date;
     notes: string | null;
     timezone: string;
+    meetingTypeName?: string;
+    kind?: "booked" | "rescheduled" | "cancelled";
   }
 ) {
   const when = booking.startsAt.toLocaleString("en-US", {
@@ -67,11 +69,75 @@ export async function sendBookingOwnerNotification(
     timeZone: booking.timezone,
     timeZoneName: "short",
   });
+  const what = booking.meetingTypeName ? ` (${booking.meetingTypeName})` : "";
+  const verb = booking.kind === "rescheduled" ? "rescheduled to" : booking.kind === "cancelled" ? "cancelled" : "booked for";
+  const label = booking.kind === "rescheduled" ? "Rescheduled" : booking.kind === "cancelled" ? "Cancelled" : "New booking";
   await send({
     to: ownerEmail,
-    subject: `New call booked: ${booking.name}`,
-    text: `${booking.name} (${booking.email}) booked a call for ${when}.${booking.notes ? `\n\nNotes: ${booking.notes}` : ""}`,
-    html: `<p><strong>${booking.name}</strong> (${booking.email}) booked a call for <strong>${when}</strong>.</p>${booking.notes ? `<p>Notes: ${booking.notes}</p>` : ""}`,
+    subject: `${label}: ${booking.name}${what}`,
+    text: `${booking.name} (${booking.email}) ${verb} ${when}.${booking.notes ? `\n\nNotes: ${booking.notes}` : ""}`,
+    html: `<p><strong>${booking.name}</strong> (${booking.email}) ${verb} <strong>${when}</strong>.</p>${booking.notes ? `<p>Notes: ${booking.notes}</p>` : ""}`,
+  });
+}
+
+function formatBookingWhen(startsAt: Date, timezone: string) {
+  return startsAt.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+    timeZoneName: "short",
+  });
+}
+
+export async function sendBookingConfirmationEmail(
+  to: string,
+  params: {
+    subject: string;
+    body: string;
+    manageUrl: string;
+    cancellationPolicy: string | null;
+  }
+) {
+  const policyLine = params.cancellationPolicy ? `\n\n${params.cancellationPolicy}` : "";
+  const manageLine = `\n\nNeed to make a change? Manage your booking: ${params.manageUrl}`;
+  await send({
+    to,
+    subject: params.subject,
+    text: `${params.body}${policyLine}${manageLine}`,
+    html: `<p>${params.body.replace(/\n/g, "<br>")}</p>${
+      params.cancellationPolicy ? `<p>${params.cancellationPolicy}</p>` : ""
+    }<p><a href="${params.manageUrl}">Manage your booking</a></p>`,
+  });
+}
+
+export async function sendBookingReminderEmail(
+  to: string,
+  params: { name: string; meetingTypeName: string; startsAt: Date; timezone: string; manageUrl: string; hoursBefore: number }
+) {
+  const when = formatBookingWhen(params.startsAt, params.timezone);
+  const lead = params.hoursBefore >= 24 ? `in ${Math.round(params.hoursBefore / 24)} day(s)` : `in ${params.hoursBefore} hour(s)`;
+  await send({
+    to,
+    subject: `Reminder: ${params.meetingTypeName} ${lead}`,
+    text: `Hi ${params.name}, this is a reminder that your ${params.meetingTypeName} is scheduled for ${when}.\n\nManage your booking: ${params.manageUrl}`,
+    html: `<p>Hi ${params.name}, this is a reminder that your <strong>${params.meetingTypeName}</strong> is scheduled for <strong>${when}</strong>.</p><p><a href="${params.manageUrl}">Manage your booking</a></p>`,
+  });
+}
+
+export async function sendBookingCancellationEmail(
+  to: string,
+  params: { name: string; meetingTypeName: string; startsAt: Date; timezone: string }
+) {
+  const when = formatBookingWhen(params.startsAt, params.timezone);
+  await send({
+    to,
+    subject: `Cancelled: ${params.meetingTypeName}`,
+    text: `Hi ${params.name}, your ${params.meetingTypeName} scheduled for ${when} has been cancelled.`,
+    html: `<p>Hi ${params.name}, your <strong>${params.meetingTypeName}</strong> scheduled for <strong>${when}</strong> has been cancelled.</p>`,
   });
 }
 

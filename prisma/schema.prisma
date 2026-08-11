@@ -35,6 +35,14 @@ model User {
   brandColor         String @default("indigo")
   defaultLandingPage String @default("/dashboard")
 
+  // Stage 7: when set, prospect-facing booking links (the shareable link
+  // shown in Booking settings, and every link inside confirmation/reminder
+  // emails) use this instead of the raw APP_URL/Vercel domain. Actually
+  // pointing a custom domain at this deployment is a Vercel dashboard step
+  // outside this app's code — this field only controls what URL gets
+  // *displayed and emailed* once that's done.
+  bookingBrandedUrl String?
+
   tasks               Task[]
   activities          Activity[]
   passwordResetTokens PasswordResetToken[]
@@ -70,6 +78,7 @@ model Company {
   tasks       Task[]
   projects    Project[]
   nextActions NextBestActionItem[]
+  bookings    Booking[]
 }
 
 enum ContactStatus {
@@ -573,20 +582,184 @@ model TimeEntry {
   projectId String
 }
 
-model Booking {
-  id        String   @id @default(cuid())
-  // Unique so two visitors racing for the same slot can't both succeed —
-  // the availability check that runs before this is a read, not a lock,
-  // so this is the actual guard against a double-booked slot.
-  startsAt  DateTime @unique
-  endsAt    DateTime
-  name      String
-  email     String
-  notes     String?
+// One configurable appointment type a prospect can pick on the public
+// booking page. Slug powers per-type share links (/book/[slug]); every
+// other field is one of the Stage 7 "each meeting type must support"
+// requirements.
+model MeetingType {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+  // Display/creation order on the meeting-type picker and settings list.
+  sortOrder   Int     @default(0)
+
+  durationMinutes Int @default(30)
+
+  // Per-type availability override — JSON array of
+  // { dayOfWeek: 0-6, start: "HH:MM", end: "HH:MM" }, same shape as
+  // User.weeklyAvailability. Null means "use the owner's default weekly
+  // availability" rather than duplicating it onto every type.
+  weeklyAvailability Json?
+
+  bufferBeforeMinutes Int @default(0)
+  bufferAfterMinutes  Int @default(0)
+
+  minNoticeHours Int @default(12) // can't be booked less than this far in advance
+  maxAdvanceDays Int @default(30) // can't be booked further out than this
+
+  // Array of { id: string, label: string, required: boolean } — free-text
+  // answers collected on the booking form. No question "types" beyond
+  // free text — kept intentionally simple.
+  intakeQuestions Json?
+
+  // Confirmation email sent to the visitor right after booking. Null
+  // subject/body falls back to a generic template in booking-notify.ts.
+  confirmationSubject String?
+  confirmationBody    String?
+
+  // Hour-offsets before the meeting to send a reminder, e.g. [24, 1] for a
+  // day-before and an hour-before reminder. Empty/null = no reminders.
+  reminderHoursBefore Json?
+
+  // Free text shown to the visitor (confirmation email + manage page) and
+  // how much notice they must give to self-cancel. Null hours = no limit.
+  cancellationPolicy   String?
+  minCancelNoticeHours Int?
+  allowRescheduling    Boolean @default(true)
+
+  // When a booking of this type is made, advance the linked deal (existing
+  // or newly created) to this pipeline stage — e.g. Discovery Call ->
+  // DISCOVERY_SCHEDULED. Null = don't touch the deal's stage, just link it.
+  relatedDealStage DealStage?
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+  RESCHEDULED // superseded by a newer booking — see rescheduledTo
+}
+
+model Booking {
+  id     String        @id @default(cuid())
+  status BookingStatus @default(CONFIRMED)
+
+  // Unique so two visitors racing for the exact same instant can't both
+  // succeed — a real read-then-write race for two *different* (but
+  // buffer-overlapping) instants is closed at the application layer by
+  // running the availability check + insert inside a serializable
+  // transaction (see booking-engine.ts), since a plain unique constraint
+  // can't express "no two buffered ranges overlap."
+  startsAt DateTime @unique
+  endsAt   DateTime
+
+  // startsAt/endsAt widened by the meeting type's buffers at creation
+  // time — this is the actual range checked for overlap against other
+  // bookings, so a back-to-back buffer requirement is enforced without
+  // re-deriving it from the (possibly since-changed) meeting type on every
+  // check.
+  bufferedStartsAt DateTime
+  bufferedEndsAt   DateTime
+
+  name        String
+  email       String
+  companyName String? // as typed by the visitor, before any Company match/create
+  notes       String?
+
+  // Visitor's own timezone at booking time (IANA name, e.g.
+  // "America/Los_Angeles") — collected from the browser on the public
+  // form. Slots themselves are always generated in the owner's timezone;
+  // this is what lets confirmation/reminder emails and the manage page
+  // show the visitor their own local time instead.
+  timezone String
+
+  intakeAnswers Json? // { [questionId]: answer }
+
+  // Set from a client-generated UUID resubmitted unchanged on retry —
+  // lets a double-click or a network-retried form submission be detected
+  // and treated as "already done" instead of creating a second booking.
+  idempotencyKey String? @unique
+
+  // Opaque, unguessable (crypto-random, see tokens.ts) reference mailed to
+  // the visitor as their manage-booking link. Stored directly rather than
+  // hashed like the password-reset token — unlike a password reset, this
+  // needs to be reusable across the confirmation, reminder, and reschedule
+  // emails sent over the life of one booking, and it only ever grants
+  // self-service control over this one low-stakes appointment, not
+  // account access.
+  manageToken String? @unique
+
+  createdAt DateTime @default(now())
+
+  confirmationSentAt DateTime?
+  internalNotifiedAt DateTime?
+  // Array of hour-offsets (numbers) whose reminder has already gone out —
+  // checked against MeetingType.reminderHoursBefore so a reminder is never
+  // sent twice for the same booking, even though there's no scheduler and
+  // this is instead swept lazily (see booking-notify.ts).
+  remindersSent      Json?
+
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  completedAt DateTime?
+  noShowAt    DateTime?
+
+  // Self-relation: the booking THIS one replaced, if it was created via a
+  // reschedule. Unique because a given old booking can be replaced by at
+  // most one new one. The old booking's own row is kept (status set to
+  // RESCHEDULED) rather than deleted, so its history/logs survive.
+  rescheduledFromId String?  @unique
+  rescheduledFrom   Booking? @relation("BookingReschedule", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo     Booking? @relation("BookingReschedule")
+
+  meetingType   MeetingType? @relation(fields: [meetingTypeId], references: [id], onDelete: SetNull)
+  meetingTypeId String?
 
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   contactId String?
+
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyId String?
+
+  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  dealId String?
+
+  logs BookingLog[]
+
+  @@index([status, startsAt])
+}
+
+enum BookingLogType {
+  CONFIRMATION_SENT
+  REMINDER_SENT
+  DELIVERY_FAILED
+  BOOKING_CONFLICT
+  DUPLICATE_PREVENTED
+}
+
+// Append-only audit trail for booking delivery/validation events — the
+// "Add logs for" requirement. bookingId is nullable because a conflict or
+// duplicate-prevented event happens *instead of* a booking being created,
+// so there's sometimes no Booking row to attach to.
+model BookingLog {
+  id        String         @id @default(cuid())
+  type      BookingLogType
+  message   String
+  createdAt DateTime       @default(now())
+
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String?
+
+  @@index([type, createdAt])
 }
 
 // The 5 original values (NEW, CONTACTED, PROPOSAL, WON, LOST) expanded to an
@@ -657,6 +830,7 @@ model Deal {
   tasks       Task[]
   activities  Activity[]
   nextActions NextBestActionItem[]
+  bookings    Booking[]
 }
 
 // OPEN/DONE expanded to a full workflow. Existing rows are remapped on
@@ -957,6 +1131,10 @@ enum AutomationTrigger {
   REVIEW_REQUEST
   MISSED_CALL
   APPOINTMENT_BOOKED
+  APPOINTMENT_RESCHEDULED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_COMPLETED
+  APPOINTMENT_NO_SHOW
 }
 
 enum AutomationActionType {

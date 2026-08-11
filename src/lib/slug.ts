@@ -30,3 +30,21 @@ export async function uniqueArticleSlug(title: string, excludeId?: string): Prom
   }
   return `${base}-${Date.now()}`;
 }
+
+// Same pattern for MeetingType slugs, which power the public /book/[slug]
+// share links.
+export async function uniqueMeetingTypeSlug(name: string, excludeId?: string): Promise<string> {
+  const base = slugify(name);
+  let candidate = base;
+  let n = 2;
+  while (n < 1000) {
+    const existing = await prisma.meetingType.findFirst({
+      where: { slug: candidate, ...(excludeId ? { id: { not: excludeId } } : {}) },
+      select: { id: true },
+    });
+    if (!existing) return candidate;
+    candidate = `${base}-${n}`;
+    n++;
+  }
+  return `${base}-${Date.now()}`;
+}
