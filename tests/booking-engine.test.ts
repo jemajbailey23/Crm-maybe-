@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // Real-database integration tests, per this codebase's established
 // convention (see Stage 6's finance tests) — only genuinely external side
@@ -50,6 +51,7 @@ const {
   markBookingNoShow,
   getAvailableSlotsForType,
   findBookingByManageToken,
+  resolveAvailabilityRules,
 } = await import("@/lib/booking-engine");
 const { notifyBookingCreated, sendDueBookingReminders } = await import("@/lib/booking-notify");
 
@@ -501,6 +503,49 @@ describe("cancelBookingByToken / cancelBookingAsOwner", () => {
     expect(fireAutomationTrigger).toHaveBeenCalledWith("APPOINTMENT_CANCELLED", expect.anything());
   });
 
+  // Bugfix regression: Booking.startsAt used to be globally @unique, so a
+  // cancelled booking's row (kept for history, not deleted) permanently
+  // blocked its exact instant — getAvailableSlotsForType said it was free
+  // (as the test above confirms), but the actual insert failed with a
+  // DB-level unique violation the moment anyone tried to take it. Only a
+  // real second createBooking() call into the exact same instant proves
+  // this is fixed; checking the slot list alone (as above) doesn't.
+  it("lets a different visitor actually re-book the exact instant a cancelled booking held", async () => {
+    const meetingType = await makeMeetingType();
+    const slot = nextSlot();
+
+    const first = await createBooking({
+      meetingTypeSlug: meetingType.slug,
+      startsAt: slot,
+      name: "First Occupant",
+      email: `reuse-a-${RUN_ID}@example.com`,
+      timezone: "UTC",
+      idempotencyKey: `idem-${RUN_ID}-reuse-a`,
+    });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    createdContactIds.push(first.booking.contactId!);
+    createdBookingIds.push(first.booking.id);
+
+    const cancelResult = await cancelBookingByToken(first.manageToken!);
+    expect(cancelResult.ok).toBe(true);
+
+    const second = await createBooking({
+      meetingTypeSlug: meetingType.slug,
+      startsAt: slot,
+      name: "Second Occupant",
+      email: `reuse-b-${RUN_ID}@example.com`,
+      timezone: "UTC",
+      idempotencyKey: `idem-${RUN_ID}-reuse-b`,
+    });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    createdContactIds.push(second.booking.contactId!);
+    createdBookingIds.push(second.booking.id);
+    expect(second.booking.startsAt.getTime()).toBe(slot.getTime());
+    expect(second.booking.status).toBe("CONFIRMED");
+  });
+
   it("enforces the meeting type's minimum cancellation notice for self-service cancellation", async () => {
     const meetingType = await makeMeetingType({ minCancelNoticeHours: 48, minNoticeHours: 0 });
     const soon = hoursFromNow(2); // genuinely soon (real time) — under the 48h policy, off the 6h test grid
@@ -726,5 +771,28 @@ describe("findBookingByManageToken", () => {
 
     const notFound = await findBookingByManageToken("not-a-real-token");
     expect(notFound).toBeNull();
+  });
+});
+
+// Bugfix regression: resolveAvailabilityRules used to treat an explicit
+// empty override ([], every day disabled) the same as "no override
+// configured," silently falling back to the owner's default hours.
+describe("resolveAvailabilityRules — empty override vs. no override", () => {
+  it("uses the owner's default hours when no override is configured (null)", async () => {
+    const meetingType = await makeMeetingType({ weeklyAvailability: Prisma.JsonNull });
+    const rules = resolveAvailabilityRules(meetingType, owner!);
+    expect(rules).toEqual(owner!.weeklyAvailability);
+  });
+
+  it("returns zero rules — not the owner's default — for a deliberately empty override", async () => {
+    const meetingType = await makeMeetingType({ weeklyAvailability: [] });
+    const rules = resolveAvailabilityRules(meetingType, owner!);
+    expect(rules).toEqual([]);
+  });
+
+  it("an empty override produces zero bookable slots, not the owner's normal availability", async () => {
+    const meetingType = await makeMeetingType({ weeklyAvailability: [] });
+    const slots = await getAvailableSlotsForType(meetingType, owner!, new Date());
+    expect(slots).toHaveLength(0);
   });
 });

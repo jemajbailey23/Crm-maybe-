@@ -652,13 +652,21 @@ model Booking {
   id     String        @id @default(cuid())
   status BookingStatus @default(CONFIRMED)
 
-  // Unique so two visitors racing for the exact same instant can't both
-  // succeed — a real read-then-write race for two *different* (but
-  // buffer-overlapping) instants is closed at the application layer by
-  // running the availability check + insert inside a serializable
-  // transaction (see booking-engine.ts), since a plain unique constraint
-  // can't express "no two buffered ranges overlap."
-  startsAt DateTime @unique
+  // No @unique here, deliberately — see the partial unique index in the
+  // migration SQL instead ("Booking_startsAt_active_key", WHERE status NOT
+  // IN (CANCELLED, RESCHEDULED)). Prisma's schema language can't express a
+  // *conditional* unique constraint, and a plain unconditional one is
+  // actually wrong here: a cancelled or rescheduled booking's row is kept
+  // (not deleted) for history, and a global unique constraint on startsAt
+  // would mean that exact instant can never be booked again by anyone,
+  // forever, the moment any booking has ever occupied it — even after it's
+  // cancelled and the slot picker correctly shows it as free again. The
+  // partial index guards two visitors racing for the same instant among
+  // *currently-blocking* bookings only; a real read-then-write race for
+  // two *different* (but buffer-overlapping) instants is separately closed
+  // at the application layer by running the availability check + insert
+  // inside a serializable transaction (see booking-engine.ts).
+  startsAt DateTime
   endsAt   DateTime
 
   // startsAt/endsAt widened by the meeting type's buffers at creation

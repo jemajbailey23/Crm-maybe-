@@ -48,10 +48,17 @@ async function logBooking(
 }
 
 /** Resolves the availability rules a meeting type actually uses — its own
- * override if set, otherwise the owner's default weekly availability. */
+ * override if set, otherwise the owner's default weekly availability.
+ *
+ * Bugfix: this used to treat an override of `[]` (every day explicitly
+ * disabled) the same as "no override configured," silently falling back
+ * to the owner's default hours — so an owner trying to pause bookings for
+ * just one meeting type by unchecking every day found it stayed fully
+ * bookable. `[]` is a real, deliberate value (zero availability) and is
+ * only equivalent to "no override" when it's actually `null`. */
 export function resolveAvailabilityRules(meetingType: MeetingType, owner: User): AvailabilityRule[] {
   const override = meetingType.weeklyAvailability as unknown as AvailabilityRule[] | null;
-  if (override && override.length > 0) return override;
+  if (override !== null && override !== undefined) return override;
   return (owner.weeklyAvailability as unknown as AvailabilityRule[] | null) ?? [];
 }
 

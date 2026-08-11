@@ -16,6 +16,24 @@ export function isMailConfigured() {
   return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
 }
 
+// Bugfix: booking-related emails below embed visitor-supplied text (name,
+// notes, a meeting type's owner-authored confirmation body) directly into
+// the `html` field. Without escaping, a visitor who books with a name
+// like `<a href="evil">Click here</a>` gets that rendered as live HTML in
+// the email sent to both themselves and the CRM owner — a real phishing/
+// spoofing surface, even though most mail clients strip <script>. Every
+// dynamic value going into an HTML string in this file should be passed
+// through this first; the plain-text `text` field is unaffected (email
+// clients render it literally, so raw text there is safe).
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function send(options: {
   to: string;
   subject: string;
@@ -72,11 +90,14 @@ export async function sendBookingOwnerNotification(
   const what = booking.meetingTypeName ? ` (${booking.meetingTypeName})` : "";
   const verb = booking.kind === "rescheduled" ? "rescheduled to" : booking.kind === "cancelled" ? "cancelled" : "booked for";
   const label = booking.kind === "rescheduled" ? "Rescheduled" : booking.kind === "cancelled" ? "Cancelled" : "New booking";
+  const safeName = escapeHtml(booking.name);
+  const safeEmail = escapeHtml(booking.email);
+  const safeNotes = booking.notes ? escapeHtml(booking.notes) : null;
   await send({
     to: ownerEmail,
     subject: `${label}: ${booking.name}${what}`,
     text: `${booking.name} (${booking.email}) ${verb} ${when}.${booking.notes ? `\n\nNotes: ${booking.notes}` : ""}`,
-    html: `<p><strong>${booking.name}</strong> (${booking.email}) ${verb} <strong>${when}</strong>.</p>${booking.notes ? `<p>Notes: ${booking.notes}</p>` : ""}`,
+    html: `<p><strong>${safeName}</strong> (${safeEmail}) ${verb} <strong>${when}</strong>.</p>${safeNotes ? `<p>Notes: ${safeNotes}</p>` : ""}`,
   });
 }
 
@@ -104,27 +125,37 @@ export async function sendBookingConfirmationEmail(
 ) {
   const policyLine = params.cancellationPolicy ? `\n\n${params.cancellationPolicy}` : "";
   const manageLine = `\n\nNeed to make a change? Manage your booking: ${params.manageUrl}`;
+  const safeBody = escapeHtml(params.body).replace(/\n/g, "<br>");
+  const safePolicy = params.cancellationPolicy ? escapeHtml(params.cancellationPolicy) : null;
   await send({
     to,
     subject: params.subject,
     text: `${params.body}${policyLine}${manageLine}`,
-    html: `<p>${params.body.replace(/\n/g, "<br>")}</p>${
-      params.cancellationPolicy ? `<p>${params.cancellationPolicy}</p>` : ""
+    html: `<p>${safeBody}</p>${
+      safePolicy ? `<p>${safePolicy}</p>` : ""
     }<p><a href="${params.manageUrl}">Manage your booking</a></p>`,
   });
 }
 
 export async function sendBookingReminderEmail(
   to: string,
-  params: { name: string; meetingTypeName: string; startsAt: Date; timezone: string; manageUrl: string; hoursBefore: number }
+  // manageUrl is optional — bugfix: the caller used to pass an empty
+  // string when a booking had no manage token, which produced a broken
+  // ".../book/manage/" link instead of just omitting it. Absent/empty now
+  // means "don't include a manage link" rather than "include a broken one."
+  params: { name: string; meetingTypeName: string; startsAt: Date; timezone: string; manageUrl?: string; hoursBefore: number }
 ) {
   const when = formatBookingWhen(params.startsAt, params.timezone);
   const lead = params.hoursBefore >= 24 ? `in ${Math.round(params.hoursBefore / 24)} day(s)` : `in ${params.hoursBefore} hour(s)`;
+  const safeName = escapeHtml(params.name);
+  const safeType = escapeHtml(params.meetingTypeName);
+  const manageTextLine = params.manageUrl ? `\n\nManage your booking: ${params.manageUrl}` : "";
+  const manageHtmlLine = params.manageUrl ? `<p><a href="${params.manageUrl}">Manage your booking</a></p>` : "";
   await send({
     to,
     subject: `Reminder: ${params.meetingTypeName} ${lead}`,
-    text: `Hi ${params.name}, this is a reminder that your ${params.meetingTypeName} is scheduled for ${when}.\n\nManage your booking: ${params.manageUrl}`,
-    html: `<p>Hi ${params.name}, this is a reminder that your <strong>${params.meetingTypeName}</strong> is scheduled for <strong>${when}</strong>.</p><p><a href="${params.manageUrl}">Manage your booking</a></p>`,
+    text: `Hi ${params.name}, this is a reminder that your ${params.meetingTypeName} is scheduled for ${when}.${manageTextLine}`,
+    html: `<p>Hi ${safeName}, this is a reminder that your <strong>${safeType}</strong> is scheduled for <strong>${when}</strong>.</p>${manageHtmlLine}`,
   });
 }
 
@@ -133,11 +164,13 @@ export async function sendBookingCancellationEmail(
   params: { name: string; meetingTypeName: string; startsAt: Date; timezone: string }
 ) {
   const when = formatBookingWhen(params.startsAt, params.timezone);
+  const safeName = escapeHtml(params.name);
+  const safeType = escapeHtml(params.meetingTypeName);
   await send({
     to,
     subject: `Cancelled: ${params.meetingTypeName}`,
     text: `Hi ${params.name}, your ${params.meetingTypeName} scheduled for ${when} has been cancelled.`,
-    html: `<p>Hi ${params.name}, your <strong>${params.meetingTypeName}</strong> scheduled for <strong>${when}</strong> has been cancelled.</p>`,
+    html: `<p>Hi ${safeName}, your <strong>${safeType}</strong> scheduled for <strong>${when}</strong> has been cancelled.</p>`,
   });
 }
 

@@ -7,7 +7,7 @@ import { NextBestActionsPanel } from "./next-best-actions-panel";
 import { checkOverdueTasks } from "@/lib/automations";
 import { sendDueBookingReminders } from "@/lib/booking-notify";
 import { getStageLabels, stageOptions } from "@/lib/pipeline-stages";
-import { startOfDayInZone, endOfDayInZone, startOfMonthInZone } from "@/lib/timezone";
+import { startOfDayInZone, endOfDayInZone, startOfMonthInZone, endOfMonthInZone } from "@/lib/timezone";
 import { getSalesPipelineStats } from "./sales-pipeline";
 import { getRevenueSnapshot } from "./revenue-snapshot";
 import { getDeliverySnapshot } from "./delivery-snapshot";
@@ -34,6 +34,7 @@ export default async function DashboardPage() {
   const startOfToday = startOfDayInZone(now, user.bookingTimezone);
   const endOfToday = endOfDayInZone(now, user.bookingTimezone);
   const startOfMonth = startOfMonthInZone(now, user.bookingTimezone);
+  const endOfMonth = endOfMonthInZone(now, user.bookingTimezone);
 
   // Reconcile persisted Next Best Action recommendations against live data
   // before reading them below — this has to happen before the query, not
@@ -103,7 +104,7 @@ export default async function DashboardPage() {
     prisma.project.count({ where: { status: "PAUSED" } }),
     getTopActiveNextActions(6),
     getSalesPipelineStats(now),
-    getRevenueSnapshot(now, startOfMonth),
+    getRevenueSnapshot(now, startOfMonth, endOfMonth),
     getDeliverySnapshot(now),
     prisma.task.count({ where: { status: "BLOCKED" } }),
     prisma.task.count({ where: { status: "WAITING" } }),

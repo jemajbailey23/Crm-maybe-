@@ -89,6 +89,16 @@ export async function importContactsCsv(
   }
 
   const companyCache = new Map<string, string>();
+  // Bugfix: importing used to create a brand-new Contact for every row,
+  // unconditionally — re-uploading the same file (or the same lead
+  // appearing in two source lists) duplicated every contact. These sets
+  // track identifiers already matched *within this run* so two rows in
+  // the same file that describe the same person/business are caught too,
+  // not just repeats across separate import runs (which the DB lookups
+  // below catch).
+  const seenEmails = new Set<string>();
+  const seenBusinessNames = new Set<string>();
+  const seenPersonNames = new Set<string>();
   let companiesCreated = 0;
   let imported = 0;
   const skipped: { row: number; reason: string }[] = [];
@@ -118,6 +128,63 @@ export async function importContactsCsv(
       continue;
     }
 
+    // Dedup: prefer email as the identifier (matches the convention used
+    // by booking-engine.ts's findOrCreateContact), fall back to business
+    // name for business-only leads, then to an exact first+last name
+    // match for person rows with no email at all. A row that matches an
+    // existing contact by whichever identifier it has is skipped rather
+    // than creating a duplicate.
+    const email = row.email || null;
+    if (email) {
+      const key = email.toLowerCase();
+      if (seenEmails.has(key)) {
+        skipped.push({ row: rowNumber, reason: `Duplicate email in this file (${email})` });
+        continue;
+      }
+      const existing = await prisma.contact.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+      });
+      if (existing) {
+        skipped.push({ row: rowNumber, reason: `Contact already exists (matched by email: ${email})` });
+        continue;
+      }
+      seenEmails.add(key);
+    } else if (businessName) {
+      const key = businessName.toLowerCase();
+      if (seenBusinessNames.has(key)) {
+        skipped.push({ row: rowNumber, reason: `Duplicate business name in this file (${businessName})` });
+        continue;
+      }
+      const existing = await prisma.contact.findFirst({
+        where: { businessName: { equals: businessName, mode: "insensitive" } },
+      });
+      if (existing) {
+        skipped.push({ row: rowNumber, reason: `Contact already exists (matched by business name: ${businessName})` });
+        continue;
+      }
+      seenBusinessNames.add(key);
+    } else {
+      const key = `${firstName.toLowerCase()} ${lastName.toLowerCase()}`;
+      if (seenPersonNames.has(key)) {
+        skipped.push({ row: rowNumber, reason: `Duplicate name in this file (${firstName} ${lastName})` });
+        continue;
+      }
+      const existing = await prisma.contact.findFirst({
+        where: {
+          firstName: { equals: firstName, mode: "insensitive" },
+          lastName: { equals: lastName, mode: "insensitive" },
+        },
+      });
+      if (existing) {
+        skipped.push({
+          row: rowNumber,
+          reason: `Contact already exists (matched by name: ${firstName} ${lastName} — no email to disambiguate)`,
+        });
+        continue;
+      }
+      seenPersonNames.add(key);
+    }
+
     let companyId: string | null = null;
     const companyName = row.company;
     if (companyName) {
@@ -144,7 +211,7 @@ export async function importContactsCsv(
       data: {
         firstName,
         lastName,
-        email: row.email || null,
+        email,
         phone: row.phone || null,
         title: row.title || null,
         tags: row.tags || null,

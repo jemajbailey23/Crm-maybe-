@@ -212,7 +212,11 @@ export async function sendDueBookingReminders(now: Date = new Date()) {
           meetingTypeName: booking.meetingType?.name ?? "your meeting",
           startsAt: booking.startsAt,
           timezone: booking.timezone,
-          manageUrl: booking.manageToken ? bookingManageUrl(owner, booking.manageToken) : bookingManageUrl(owner, ""),
+          // Bugfix: omit the manage link entirely for a booking with no
+          // token (rather than building one from an empty string, which
+          // produced a broken ".../book/manage/" URL) — sendBookingReminderEmail
+          // now treats a missing manageUrl as "no link," not "bad link."
+          manageUrl: booking.manageToken ? bookingManageUrl(owner, booking.manageToken) : undefined,
           hoursBefore: offset,
         });
         alreadySent.add(offset);
