@@ -1166,13 +1166,31 @@ enum AutomationRunStatus {
 }
 
 model AutomationRule {
-  id         String               @id @default(cuid())
-  name       String
-  trigger    AutomationTrigger
+  id        String            @id @default(cuid())
+  name      String
+  trigger   AutomationTrigger
+  enabled   Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  // A rule used to have exactly one action baked directly onto it
+  // (actionType/taskTitle/.../webhookUrl fields). That's now AutomationAction
+  // below — one rule can chain several actions (e.g. create a task AND email
+  // the contact off the same trigger) instead of needing a separate rule per
+  // action. See the 20260811050000 migration for how existing rules/runs
+  // were carried over.
+  actions AutomationAction[]
+  runs    AutomationRun[]
+}
+
+// One step in a rule's action chain, run in `order`. Same per-type config
+// fields the single-action AutomationRule used to hold, just scoped to one
+// action instead of the whole rule.
+model AutomationAction {
+  id        String               @id @default(cuid())
+  order     Int                  @default(0)
   actionType AutomationActionType
-  enabled    Boolean              @default(true)
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
+  createdAt DateTime             @default(now())
 
   // CREATE_TASK config
   taskTitle     String?
@@ -1186,7 +1204,12 @@ model AutomationRule {
   // WEBHOOK config
   webhookUrl String?
 
+  rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  ruleId String
+
   runs AutomationRun[]
+
+  @@index([ruleId, order])
 }
 
 model AutomationRun {
@@ -1194,8 +1217,17 @@ model AutomationRun {
   status    AutomationRunStatus @default(SUCCESS)
   summary   String
   error     String?
+  // Manual "Test this automation" runs from the detail page, as opposed to
+  // a real trigger firing — kept separate so a test doesn't read as
+  // evidence the automation is (or isn't) working in production.
+  isTest    Boolean             @default(false)
   createdAt DateTime            @default(now())
 
+  action   AutomationAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  actionId String
+  // Denormalized alongside actionId so "all runs for this rule" doesn't
+  // need to join through actions — kept in sync at write time since a run
+  // is only ever created for one specific rule+action pair together.
   rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   ruleId String
 }

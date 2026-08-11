@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import type { AutomationFormState } from "./actions";
 import {
   TRIGGERS,
@@ -10,14 +10,201 @@ import {
   ACTION_LABEL,
   EMAIL_RECIPIENTS,
   EMAIL_RECIPIENT_LABEL,
+  EMAIL_TOKENS,
 } from "./meta";
 import type { AutomationActionType, AutomationEmailRecipient, AutomationTrigger } from "@prisma/client";
 
 const initialState: AutomationFormState = {};
+const MAX_ACTIONS = 5;
 
 const inputClass =
   "mt-1 block w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500";
 const labelClass = "block text-sm font-medium text-zinc-300";
+
+export type ActionDefaults = {
+  id?: string;
+  actionType: AutomationActionType;
+  taskTitle?: string | null;
+  taskDueInDays?: number | null;
+  emailRecipient?: AutomationEmailRecipient;
+  emailSubject?: string | null;
+  emailBody?: string | null;
+  webhookUrl?: string | null;
+};
+
+type ActionRow = ActionDefaults & { key: string };
+
+function insertTokenInto(fieldId: string, token: string) {
+  const el = document.getElementById(fieldId) as HTMLInputElement | HTMLTextAreaElement | null;
+  if (!el) return;
+  const start = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? el.value.length;
+  el.value = el.value.slice(0, start) + token + el.value.slice(end);
+  el.focus();
+  const pos = start + token.length;
+  el.setSelectionRange(pos, pos);
+}
+
+function TokenPicker({ fieldId }: { fieldId: string }) {
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {EMAIL_TOKENS.map((t) => (
+        <button
+          key={t.token}
+          type="button"
+          title={t.description}
+          onClick={() => insertTokenInto(fieldId, t.token)}
+          className="rounded-full border border-zinc-700 bg-zinc-800/80 px-2 py-0.5 font-mono text-[11px] text-zinc-400 transition-colors hover:border-indigo-500/50 hover:text-indigo-300"
+        >
+          {t.token}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ActionFields({
+  index,
+  action,
+  onChange,
+}: {
+  index: number;
+  action: ActionRow;
+  onChange: (patch: Partial<ActionRow>) => void;
+}) {
+  const taskTitleId = `action-${index}-taskTitle-field`;
+  const subjectId = `action-${index}-emailSubject-field`;
+  const bodyId = `action-${index}-emailBody-field`;
+
+  return (
+    <div>
+      <input type="hidden" name={`action-${index}-id`} value={action.id ?? ""} />
+      <div>
+        <label className={labelClass}>Do this…</label>
+        <select
+          name={`action-${index}-actionType`}
+          value={action.actionType}
+          onChange={(e) => onChange({ actionType: e.target.value as AutomationActionType })}
+          className={inputClass}
+        >
+          {ACTION_TYPES.map((a) => (
+            <option key={a} value={a}>
+              {ACTION_LABEL[a]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {action.actionType === "CREATE_TASK" && (
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className={labelClass}>Task title</label>
+            <input
+              id={taskTitleId}
+              name={`action-${index}-taskTitle`}
+              defaultValue={action.taskTitle ?? ""}
+              placeholder="Leave blank to use the event's own description"
+              className={inputClass}
+            />
+            <TokenPicker fieldId={taskTitleId} />
+          </div>
+          <div>
+            <label className={labelClass}>Due in (days)</label>
+            <input
+              name={`action-${index}-taskDueInDays`}
+              type="number"
+              min={0}
+              step={1}
+              defaultValue={action.taskDueInDays ?? 1}
+              className={inputClass}
+            />
+          </div>
+        </div>
+      )}
+
+      {action.actionType === "SEND_EMAIL" && (
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className={labelClass}>Send to</label>
+            <select
+              name={`action-${index}-emailRecipient`}
+              value={action.emailRecipient ?? "OWNER"}
+              onChange={(e) => onChange({ emailRecipient: e.target.value as AutomationEmailRecipient })}
+              className={inputClass}
+            >
+              {EMAIL_RECIPIENTS.map((r) => (
+                <option key={r} value={r}>
+                  {EMAIL_RECIPIENT_LABEL[r]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-zinc-500">
+              {action.emailRecipient === "CONTACT"
+                ? "Skipped (and logged as failed below) if this event has no linked contact, or the contact has no email on file."
+                : "Sent to your own account email."}
+            </p>
+          </div>
+          <div>
+            <label className={labelClass}>Subject</label>
+            <input
+              id={subjectId}
+              name={`action-${index}-emailSubject`}
+              required={action.emailRecipient === "CONTACT"}
+              defaultValue={action.emailSubject ?? ""}
+              placeholder={action.emailRecipient === "CONTACT" ? "Your call is confirmed" : "Automation: ..."}
+              className={inputClass}
+            />
+            <TokenPicker fieldId={subjectId} />
+          </div>
+          <div>
+            <label className={labelClass}>Body</label>
+            <textarea
+              id={bodyId}
+              name={`action-${index}-emailBody`}
+              rows={3}
+              required={action.emailRecipient === "CONTACT"}
+              defaultValue={action.emailBody ?? ""}
+              placeholder={
+                action.emailRecipient === "CONTACT"
+                  ? "Hi {{name}}, ..."
+                  : "Optional extra message — the event's own description is appended automatically below this."
+              }
+              className={inputClass}
+            />
+            <TokenPicker fieldId={bodyId} />
+            <p className="mt-1.5 text-xs text-zinc-500">
+              {action.emailRecipient === "CONTACT"
+                ? "This is the entire message the contact sees — write it as you would to them."
+                : "The event's own description is appended automatically below this."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {action.actionType === "WEBHOOK" && (
+        <div className="mt-4">
+          <label className={labelClass}>Webhook URL</label>
+          <input
+            name={`action-${index}-webhookUrl`}
+            type="url"
+            required
+            defaultValue={action.webhookUrl ?? ""}
+            placeholder="https://hooks.zapier.com/..."
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            A JSON payload is POSTed here — trigger, rule name, event summary, and linked contact ID
+            — so you can wire this into Zapier, Make, n8n, or your own endpoint.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function newAction(key: string): ActionRow {
+  return { key, actionType: "CREATE_TASK", emailRecipient: "OWNER" };
+}
 
 export function AutomationForm({
   action,
@@ -31,29 +218,39 @@ export function AutomationForm({
   defaultValues?: {
     name?: string;
     trigger?: AutomationTrigger;
-    actionType?: AutomationActionType;
-    taskTitle?: string | null;
-    taskDueInDays?: number | null;
-    emailRecipient?: AutomationEmailRecipient;
-    emailSubject?: string | null;
-    emailBody?: string | null;
-    webhookUrl?: string | null;
+    actions?: ActionDefaults[];
   };
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
-  const [trigger, setTrigger] = useState<AutomationTrigger>(
-    defaultValues?.trigger ?? "LEAD_CREATED"
-  );
-  const [actionType, setActionType] = useState<AutomationActionType>(
-    defaultValues?.actionType ?? "CREATE_TASK"
-  );
-  const [emailRecipient, setEmailRecipient] = useState<AutomationEmailRecipient>(
-    defaultValues?.emailRecipient ?? "OWNER"
-  );
+  const [trigger, setTrigger] = useState<AutomationTrigger>(defaultValues?.trigger ?? "LEAD_CREATED");
+  // Only ever read/written from event handlers (addAction below), never
+  // during render — the initial keys for existing actions are derived from
+  // their array position instead, since that only needs to happen once at
+  // mount time inside the useState initializer.
+  const nextKey = useRef(0);
+
+  const [actions, setActions] = useState<ActionRow[]>(() => {
+    const initial = defaultValues?.actions?.length ? defaultValues.actions : [{ actionType: "CREATE_TASK" as const }];
+    return initial.map((a, i) => ({ ...a, key: `init-${i}` }));
+  });
+
+  function updateAction(index: number, patch: Partial<ActionRow>) {
+    setActions((prev) => prev.map((a, i) => (i === index ? { ...a, ...patch } : a)));
+  }
+
+  function addAction() {
+    setActions((prev) => (prev.length >= MAX_ACTIONS ? prev : [...prev, newAction(`new-${nextKey.current++}`)]));
+  }
+
+  function removeAction(index: number) {
+    setActions((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  }
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="actionCount" value={actions.length} />
+
       <div>
         <label className={labelClass}>Name</label>
         <input
@@ -82,124 +279,40 @@ export function AutomationForm({
         <p className="mt-1 text-xs text-zinc-500">{TRIGGER_DESCRIPTION[trigger]}</p>
       </div>
 
-      <div>
-        <label className={labelClass}>Do this…</label>
-        <select
-          name="actionType"
-          value={actionType}
-          onChange={(e) => setActionType(e.target.value as AutomationActionType)}
-          className={inputClass}
+      <div className="space-y-3">
+        <label className={labelClass}>Then do this…</label>
+        {actions.map((a, i) => (
+          <div key={a.key} className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Step {i + 1}
+                {actions.length > 1 ? ` of ${actions.length}` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeAction(i)}
+                disabled={actions.length <= 1}
+                className="text-xs font-medium text-zinc-500 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Remove
+              </button>
+            </div>
+            <ActionFields index={i} action={a} onChange={(patch) => updateAction(i, patch)} />
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addAction}
+          disabled={actions.length >= MAX_ACTIONS}
+          className="w-full rounded-lg border border-dashed border-zinc-700 py-2 text-sm font-medium text-zinc-400 transition-colors hover:border-indigo-500/50 hover:text-indigo-300 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {ACTION_TYPES.map((a) => (
-            <option key={a} value={a}>
-              {ACTION_LABEL[a]}
-            </option>
-          ))}
-        </select>
+          + Add another action
+        </button>
+        <p className="text-xs text-zinc-600">
+          Every step above runs when the trigger fires — e.g. create a task <em>and</em> email the
+          contact off one event, instead of building two separate automations.
+        </p>
       </div>
-
-      {actionType === "CREATE_TASK" && (
-        <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <div>
-            <label className={labelClass}>Task title</label>
-            <input
-              name="taskTitle"
-              defaultValue={defaultValues?.taskTitle ?? ""}
-              placeholder="Leave blank to use the event's own description"
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Due in (days)</label>
-            <input
-              name="taskDueInDays"
-              type="number"
-              min={0}
-              step={1}
-              defaultValue={defaultValues?.taskDueInDays ?? 1}
-              className={inputClass}
-            />
-          </div>
-        </div>
-      )}
-
-      {actionType === "SEND_EMAIL" && (
-        <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <div>
-            <label className={labelClass}>Send to</label>
-            <select
-              name="emailRecipient"
-              value={emailRecipient}
-              onChange={(e) => setEmailRecipient(e.target.value as AutomationEmailRecipient)}
-              className={inputClass}
-            >
-              {EMAIL_RECIPIENTS.map((r) => (
-                <option key={r} value={r}>
-                  {EMAIL_RECIPIENT_LABEL[r]}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-zinc-500">
-              {emailRecipient === "CONTACT"
-                ? "Skipped (and logged as failed below) if this event has no linked contact, or the contact has no email on file."
-                : "Sent to your own account email."}
-            </p>
-          </div>
-          <div>
-            <label className={labelClass}>Subject</label>
-            <input
-              name="emailSubject"
-              required={emailRecipient === "CONTACT"}
-              defaultValue={defaultValues?.emailSubject ?? ""}
-              placeholder={
-                emailRecipient === "CONTACT" ? "Your call is confirmed" : `Automation: ${defaultValues?.name ?? "..."}`
-              }
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Body</label>
-            <textarea
-              name="emailBody"
-              rows={3}
-              required={emailRecipient === "CONTACT"}
-              defaultValue={defaultValues?.emailBody ?? ""}
-              placeholder={
-                emailRecipient === "CONTACT"
-                  ? "Hi {{name}}, ..."
-                  : "Optional extra message — the event details are appended automatically."
-              }
-              className={inputClass}
-            />
-            <p className="mt-1 text-xs text-zinc-500">
-              {emailRecipient === "CONTACT"
-                ? "This is the entire message the contact sees — write it as you would to them. You can use {{name}} and {{email}}, plus {{date}} for triggers that involve one (like a booked appointment)."
-                : "The event's own description is appended automatically below this."}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {actionType === "WEBHOOK" && (
-        <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-          <div>
-            <label className={labelClass}>Webhook URL</label>
-            <input
-              name="webhookUrl"
-              type="url"
-              required
-              defaultValue={defaultValues?.webhookUrl ?? ""}
-              placeholder="https://hooks.zapier.com/..."
-              className={inputClass}
-            />
-            <p className="mt-1 text-xs text-zinc-500">
-              A JSON payload is POSTed here — trigger, rule name, event summary, and
-              linked contact ID — so you can wire this into Zapier, Make, n8n, or your
-              own endpoint.
-            </p>
-          </div>
-        </div>
-      )}
 
       {state?.error && (
         <p className="text-sm text-red-400" aria-live="polite">

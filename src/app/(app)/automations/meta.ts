@@ -63,20 +63,38 @@ export const EMAIL_RECIPIENT_LABEL: Record<AutomationEmailRecipient, string> = {
   CONTACT: "The contact linked to this event",
 };
 
-export function actionSummary(rule: {
+type ActionSummaryInput = {
   actionType: AutomationActionType;
   taskTitle: string | null;
   taskDueInDays: number | null;
   emailRecipient: AutomationEmailRecipient;
   emailSubject: string | null;
   webhookUrl: string | null;
-}) {
-  if (rule.actionType === "CREATE_TASK") {
-    return `Create task${rule.taskTitle ? ` "${rule.taskTitle}"` : ""}, due in ${rule.taskDueInDays ?? 1} day(s)`;
+};
+
+export function actionSummary(action: ActionSummaryInput) {
+  if (action.actionType === "CREATE_TASK") {
+    return `Create task${action.taskTitle ? ` "${action.taskTitle}"` : ""}, due in ${action.taskDueInDays ?? 1} day(s)`;
   }
-  if (rule.actionType === "SEND_EMAIL") {
-    const who = rule.emailRecipient === "CONTACT" ? "the contact" : "you";
-    return `Email ${who}${rule.emailSubject ? `: "${rule.emailSubject}"` : ""}`;
+  if (action.actionType === "SEND_EMAIL") {
+    const who = action.emailRecipient === "CONTACT" ? "the contact" : "you";
+    return `Email ${who}${action.emailSubject ? `: "${action.emailSubject}"` : ""}`;
   }
-  return `POST to ${rule.webhookUrl || "(no URL set)"}`;
+  return `POST to ${action.webhookUrl || "(no URL set)"}`;
 }
+
+// One-line description of a rule's whole action chain, for the list page —
+// "Create task ... → Email the contact ..." instead of just the first step.
+export function actionsSummary(actions: ActionSummaryInput[]) {
+  if (actions.length === 0) return "No actions configured yet";
+  return actions.map(actionSummary).join(" → ");
+}
+
+// {{token}} placeholders usable in an email action's subject/body, shown as
+// clickable chips next to those fields so you don't have to remember or
+// guess the exact syntax.
+export const EMAIL_TOKENS: { token: string; description: string }[] = [
+  { token: "{{name}}", description: "Contact's first name (or business name)" },
+  { token: "{{email}}", description: "Contact's email address" },
+  { token: "{{date}}", description: "The event's date/time, for triggers that involve one" },
+];
