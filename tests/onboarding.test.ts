@@ -35,7 +35,14 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 const { sendOnboardingForm } = await import("@/lib/onboarding");
-const { submitOnboardingForm } = await import("@/app/onboard/[token]/actions");
+const {
+  saveBusinessProfile,
+  savePlatformAccess,
+  saveBrandVoice,
+  uploadBrandAsset,
+  removeBrandAsset,
+  completeOnboarding,
+} = await import("@/app/onboard/[token]/actions");
 const { updateInvoiceStatus } = await import("@/app/(app)/contacts/invoices-actions");
 const { uploadAgreement, setAgreementSigned, removeAgreement } = await import(
   "@/app/(app)/contacts/agreement-actions"
@@ -58,6 +65,13 @@ async function makeContact(overrides: Partial<Parameters<typeof prisma.contact.c
   });
   createdContactIds.push(contact.id);
   return contact;
+}
+
+async function tokenFor(contact: { id: string }) {
+  const sendResult = await sendOnboardingForm(contact.id);
+  expect(sendResult.sent).toBe(true);
+  const afterSend = await prisma.contact.findUniqueOrThrow({ where: { id: contact.id } });
+  return afterSend.onboardingFormToken!;
 }
 
 beforeEach(() => {
@@ -111,13 +125,36 @@ describe("sendOnboardingForm", () => {
   });
 });
 
-describe("submitOnboardingForm — public action", () => {
-  it("writes the submitted fields onto the contact and sets submittedAt", async () => {
+describe("onboarding wizard — per-step public actions", () => {
+  it("saveBusinessProfile writes step 1's fields", async () => {
     const contact = await makeContact();
-    const sendResult = await sendOnboardingForm(contact.id);
-    expect(sendResult.sent).toBe(true);
-    const afterSend = await prisma.contact.findUniqueOrThrow({ where: { id: contact.id } });
-    const token = afterSend.onboardingFormToken!;
+    const token = await tokenFor(contact);
+
+    const formData = new FormData();
+    formData.set("legalBusinessName", "Acme Concrete LLC");
+    formData.set("serviceAreas", "Dallas, Fort Worth");
+    formData.set("yearsInBusiness", "5");
+    formData.set("businessHours", "Mon–Fri 8am–5pm");
+    formData.set("title", "Owner");
+    formData.set("preferredContactMethod", "Email");
+
+    const result = await saveBusinessProfile(token, {}, formData);
+    expect(result.success).toBe(true);
+
+    const updated = await prisma.contact.findUniqueOrThrow({ where: { id: contact.id } });
+    expect(updated.legalBusinessName).toBe("Acme Concrete LLC");
+    expect(updated.serviceAreas).toBe("Dallas, Fort Worth");
+    expect(updated.yearsInBusiness).toBe("5");
+    expect(updated.businessHours).toBe("Mon–Fri 8am–5pm");
+    expect(updated.title).toBe("Owner");
+    expect(updated.preferredContactMethod).toBe("Email");
+    // Never submitted from step 1 anymore — only completeOnboarding sets this.
+    expect(updated.onboardingFormSubmittedAt).toBeNull();
+  });
+
+  it("savePlatformAccess writes step 2's fields", async () => {
+    const contact = await makeContact();
+    const token = await tokenFor(contact);
 
     const formData = new FormData();
     formData.set("website", "https://example.com");
@@ -125,20 +162,125 @@ describe("submitOnboardingForm — public action", () => {
     formData.set("hostingProvider", "Vercel");
     formData.set("address", "123 Main St");
 
-    const result = await submitOnboardingForm(token, {}, formData);
+    const result = await savePlatformAccess(token, {}, formData);
     expect(result.success).toBe(true);
 
-    const submitted = await prisma.contact.findUniqueOrThrow({ where: { id: contact.id } });
-    expect(submitted.website).toBe("https://example.com");
-    expect(submitted.domain).toBe("example.com");
-    expect(submitted.hostingProvider).toBe("Vercel");
-    expect(submitted.address).toBe("123 Main St");
-    expect(submitted.onboardingFormSubmittedAt).toBeTruthy();
+    const updated = await prisma.contact.findUniqueOrThrow({ where: { id: contact.id } });
+    expect(updated.website).toBe("https://example.com");
+    expect(updated.domain).toBe("example.com");
+    expect(updated.hostingProvider).toBe("Vercel");
+    expect(updated.address).toBe("123 Main St");
   });
 
-  it("returns a clear error for an invalid/unknown token", async () => {
-    const result = await submitOnboardingForm(`not-a-real-token-${RUN_ID}`, {}, new FormData());
-    expect(result.error).toMatch(/isn't valid/i);
+  it("saveBrandVoice writes step 3's free-text fields", async () => {
+    const contact = await makeContact();
+    const token = await tokenFor(contact);
+
+    const formData = new FormData();
+    formData.set("brandVoice", "Friendly");
+    formData.set("brandDescription", "We pour driveways.");
+    formData.set("brandDifferentiators", "Same-day quotes.");
+    formData.set("brandAvoidWords", "cheap");
+
+    const result = await saveBrandVoice(token, {}, formData);
+    expect(result.success).toBe(true);
+
+    const updated = await prisma.contact.findUniqueOrThrow({ where: { id: contact.id } });
+    expect(updated.brandVoice).toBe("Friendly");
+    expect(updated.brandDescription).toBe("We pour driveways.");
+    expect(updated.brandDifferentiators).toBe("Same-day quotes.");
+    expect(updated.brandAvoidWords).toBe("cheap");
+  });
+
+  it("completeOnboarding is the only step that sets submittedAt", async () => {
+    const contact = await makeContact();
+    const token = await tokenFor(contact);
+
+    const result = await completeOnboarding(token);
+    expect(result.success).toBe(true);
+
+    const updated = await prisma.contact.findUniqueOrThrow({ where: { id: contact.id } });
+    expect(updated.onboardingFormSubmittedAt).toBeTruthy();
+  });
+
+  it("every step action returns a clear error for an invalid/unknown token", async () => {
+    const badToken = `not-a-real-token-${RUN_ID}`;
+    expect((await saveBusinessProfile(badToken, {}, new FormData())).error).toMatch(/isn't valid/i);
+    expect((await savePlatformAccess(badToken, {}, new FormData())).error).toMatch(/isn't valid/i);
+    expect((await saveBrandVoice(badToken, {}, new FormData())).error).toMatch(/isn't valid/i);
+    expect((await completeOnboarding(badToken)).error).toMatch(/isn't valid/i);
+  });
+});
+
+describe("brand asset uploads — public actions", () => {
+  it("uploads a file into a slot", async () => {
+    const contact = await makeContact();
+    const token = await tokenFor(contact);
+
+    const formData = new FormData();
+    formData.set("file", new File(["logo bytes"], "logo.png", { type: "image/png" }));
+    const result = await uploadBrandAsset(token, "PRIMARY_LOGO", formData);
+    expect(result.error).toBeUndefined();
+    expect(uploadFile).toHaveBeenCalledTimes(1);
+
+    const assets = await prisma.brandAsset.findMany({ where: { contactId: contact.id } });
+    expect(assets).toHaveLength(1);
+    expect(assets[0].slot).toBe("PRIMARY_LOGO");
+    expect(assets[0].filename).toBe("logo.png");
+  });
+
+  it("supports multiple files in the same slot", async () => {
+    const contact = await makeContact();
+    const token = await tokenFor(contact);
+
+    for (const name of ["a.jpg", "b.jpg"]) {
+      const formData = new FormData();
+      formData.set("file", new File(["bytes"], name, { type: "image/jpeg" }));
+      const result = await uploadBrandAsset(token, "BUSINESS_PHOTOS", formData);
+      expect(result.error).toBeUndefined();
+    }
+
+    const assets = await prisma.brandAsset.findMany({ where: { contactId: contact.id } });
+    expect(assets).toHaveLength(2);
+  });
+
+  it("rejects an unknown slot", async () => {
+    const contact = await makeContact();
+    const token = await tokenFor(contact);
+    const formData = new FormData();
+    formData.set("file", new File(["bytes"], "x.png", { type: "image/png" }));
+
+    // @ts-expect-error — intentionally invalid slot to exercise the guard
+    const result = await uploadBrandAsset(token, "NOT_A_SLOT", formData);
+    expect(result.error).toMatch(/unknown/i);
+  });
+
+  it("rejects an empty submission with a clear error", async () => {
+    const contact = await makeContact();
+    const token = await tokenFor(contact);
+    const result = await uploadBrandAsset(token, "PRIMARY_LOGO", new FormData());
+    expect(result.error).toMatch(/choose a file/i);
+  });
+
+  it("removeBrandAsset deletes the row and the stored file, scoped to its own contact", async () => {
+    const contactA = await makeContact();
+    const tokenA = await tokenFor(contactA);
+    const contactB = await makeContact();
+    const tokenB = await tokenFor(contactB);
+
+    const formData = new FormData();
+    formData.set("file", new File(["bytes"], "logo.png", { type: "image/png" }));
+    await uploadBrandAsset(tokenA, "PRIMARY_LOGO", formData);
+    const [asset] = await prisma.brandAsset.findMany({ where: { contactId: contactA.id } });
+
+    // Contact B's token can't remove Contact A's file.
+    await removeBrandAsset(tokenB, asset.id);
+    expect(deleteFile).not.toHaveBeenCalled();
+    expect(await prisma.brandAsset.findUnique({ where: { id: asset.id } })).not.toBeNull();
+
+    await removeBrandAsset(tokenA, asset.id);
+    expect(deleteFile).toHaveBeenCalledTimes(1);
+    expect(await prisma.brandAsset.findUnique({ where: { id: asset.id } })).toBeNull();
   });
 });
 

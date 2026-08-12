@@ -185,6 +185,26 @@ model Contact {
   onboardingFormSentAt      DateTime?
   onboardingFormSubmittedAt DateTime?
 
+  // Onboarding form — Business Info step (beyond the core identity fields
+  // above). Deliberately separate from firstName/lastName/email/phone/
+  // businessName/address, which the client sees read-only in the form —
+  // those double as the Stripe-matching/contact-identity fields elsewhere
+  // in the app, so letting a public form silently rewrite them is a
+  // correctness risk the rest of these new fields don't carry.
+  legalBusinessName      String?
+  serviceAreas           String?
+  yearsInBusiness        String?
+  businessHours          String?
+  preferredContactMethod String?
+
+  // Onboarding form — Brand Assets step's free-text answers. The uploaded
+  // files themselves are BrandAsset rows (see below) rather than fields
+  // here, since several of the slots accept more than one file.
+  brandVoice           String?
+  brandDescription     String?
+  brandDifferentiators String?
+  brandAvoidWords      String?
+
   // Dedicated agreement/contract document slot — deliberately separate
   // from the generic Attachment list below so "where's the signed
   // contract" always has one obvious, labeled answer instead of being
@@ -219,6 +239,37 @@ model Contact {
   failedPayments       FailedPayment[]
   reconciliationAlerts ReconciliationAlert[]
   aiQueryLogs          AiQueryLog[]
+  brandAssets          BrandAsset[]
+}
+
+// A slot a client can upload into on the onboarding form's Brand Assets
+// step. Several slots (photos, video) commonly hold more than one file, so
+// this is its own table (one row per file) rather than a single URL field
+// per slot on Contact.
+enum BrandAssetSlot {
+  PRIMARY_LOGO
+  ALTERNATE_LOGO
+  BRAND_GUIDELINES
+  BUSINESS_PHOTOS
+  TEAM_PHOTOS
+  PRODUCT_PHOTOS
+  VIDEO_ASSETS
+}
+
+model BrandAsset {
+  id        String         @id @default(cuid())
+  slot      BrandAssetSlot
+  filename  String
+  url       String
+  path      String // storage object key, used to delete from the bucket on remove
+  sizeBytes Int
+  mimeType  String?
+  createdAt DateTime       @default(now())
+
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId String
+
+  @@index([contactId])
 }
 
 model Service {

@@ -20,6 +20,8 @@ import { LinksPanel } from "../links-panel";
 import { CredentialVault } from "../credential-vault";
 import { OnboardingFormStatus } from "../onboarding-status";
 import { AgreementPanel } from "../agreement-panel";
+import { BusinessProfileForm } from "../business-profile-form";
+import { BrandPanel } from "../brand-panel";
 import {
   DealStageBadge,
   ActivityTypeBadge,
@@ -93,6 +95,7 @@ export default async function ContactDetailPage({
           orderBy: { createdAt: "desc" },
           select: { id: true, label: true, username: true, url: true, notes: true },
         },
+        brandAssets: { orderBy: { createdAt: "asc" } },
       },
     }),
     prisma.company.findMany({
@@ -173,16 +176,26 @@ export default async function ContactDetailPage({
             id: "overview",
             label: "Overview",
             content: (
-              <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-                <h2 className="mb-4 text-sm font-semibold text-zinc-100">Details</h2>
-                <ContactForm
-                  action={updateContactWithId}
-                  companies={companies}
-                  stages={stageOptions(stageLabels)}
-                  defaultValues={contact}
-                  submitLabel="Save changes"
-                />
-              </section>
+              <div className="space-y-6">
+                <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+                  <h2 className="mb-4 text-sm font-semibold text-zinc-100">Details</h2>
+                  <ContactForm
+                    action={updateContactWithId}
+                    companies={companies}
+                    stages={stageOptions(stageLabels)}
+                    defaultValues={contact}
+                    submitLabel="Save changes"
+                  />
+                </section>
+
+                <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+                  <h2 className="mb-1 text-sm font-semibold text-zinc-100">Business profile</h2>
+                  <p className="mb-4 text-xs text-zinc-500">
+                    Collected via the onboarding form, or fill it in yourself.
+                  </p>
+                  <BusinessProfileForm contactId={contact.id} defaultValues={contact} />
+                </section>
+              </div>
             ),
           },
           {
@@ -296,6 +309,21 @@ export default async function ContactDetailPage({
                   <LinksPanel contactId={contact.id} links={contact.links} />
                 </section>
               </div>
+            ),
+          },
+          {
+            id: "brand",
+            label: "Brand",
+            badge: contact.brandAssets.length,
+            content: (
+              <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+                <h2 className="mb-1 text-sm font-semibold text-zinc-100">Brand</h2>
+                <p className="mb-4 text-xs text-zinc-500">
+                  Voice, description, and files collected via the onboarding form — used for
+                  content and creative work.
+                </p>
+                <BrandPanel contactId={contact.id} defaultValues={contact} assets={contact.brandAssets} />
+              </section>
             ),
           },
           {
