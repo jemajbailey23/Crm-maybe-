@@ -18,6 +18,8 @@ import { ServicesPanel } from "../services-panel";
 import { InvoicesPanel } from "../invoices-panel";
 import { LinksPanel } from "../links-panel";
 import { CredentialVault } from "../credential-vault";
+import { OnboardingFormStatus } from "../onboarding-status";
+import { AgreementPanel } from "../agreement-panel";
 import {
   DealStageBadge,
   ActivityTypeBadge,
@@ -203,6 +205,17 @@ export default async function ContactDetailPage({
                 </section>
 
                 <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+                  <h2 className="mb-4 text-sm font-semibold text-zinc-100">Agreement</h2>
+                  <AgreementPanel
+                    contactId={contact.id}
+                    fileUrl={contact.agreementFileUrl}
+                    filename={contact.agreementFilename}
+                    uploadedAt={contact.agreementUploadedAt}
+                    signed={contact.agreementSigned}
+                  />
+                </section>
+
+                <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
                   <h2 className="mb-4 text-sm font-semibold text-zinc-100">
                     Services purchased
                   </h2>
@@ -225,6 +238,22 @@ export default async function ContactDetailPage({
             label: "Website",
             content: (
               <div className="space-y-6">
+                <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+                  <h2 className="mb-1 text-sm font-semibold text-zinc-100">
+                    Onboarding form
+                  </h2>
+                  <p className="mb-4 text-xs text-zinc-500">
+                    A link the client fills in themselves — the fields below get
+                    filled in automatically once they submit. Sent automatically
+                    the first time an invoice is marked paid.
+                  </p>
+                  <OnboardingFormStatus
+                    contactId={contact.id}
+                    sentAt={contact.onboardingFormSentAt}
+                    submittedAt={contact.onboardingFormSubmittedAt}
+                  />
+                </section>
+
                 <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
                   <h2 className="mb-4 text-sm font-semibold text-zinc-100">
                     Website information

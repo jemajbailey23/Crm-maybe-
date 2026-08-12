@@ -65,6 +65,20 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   });
 }
 
+export async function sendOnboardingFormEmail(
+  to: string,
+  info: { name: string; formUrl: string; ownerName?: string }
+) {
+  const safeName = escapeHtml(info.name);
+  await send({
+    to,
+    subject: "A couple quick details to get you set up",
+    text: `Hi ${info.name},\n\nCould you fill out a couple details so we can get your account set up? It only takes a minute: ${info.formUrl}\n\nThanks!`,
+    html: `<p>Hi ${safeName},</p><p>Could you fill out a couple details so we can get your account set up? It only takes a minute.</p><p><a href="${info.formUrl}">${info.formUrl}</a></p><p>Thanks!</p>`,
+    fromName: info.ownerName,
+  });
+}
+
 export async function sendBookingOwnerNotification(
   ownerEmail: string,
   booking: {

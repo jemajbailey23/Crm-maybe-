@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { fireAutomationTrigger } from "@/lib/automations";
 import { getStripeClient } from "@/lib/stripe";
+import { sendOnboardingForm } from "@/lib/onboarding";
 
 async function findOrCreateContactForStripeCustomer({
   customerId,
@@ -126,6 +127,11 @@ export async function syncStripeInvoice(stripeInvoice: Stripe.Invoice, status: "
     await fireAutomationTrigger("INVOICE_PAID", {
       contactId: contact.id,
       summary: `${contactDisplayName(contact)} — ${description} ($${amount})`,
+    });
+    // See invoices-actions.ts's updateInvoiceStatus for why this is
+    // guarded (onlyIfNeverSent) and swallowed rather than thrown.
+    await sendOnboardingForm(contact.id, { onlyIfNeverSent: true }).catch((err) => {
+      console.error("[onboarding] failed to auto-send form", err);
     });
   }
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { InvoiceStatus } from "@prisma/client";
 import { fireAutomationTrigger } from "@/lib/automations";
+import { sendOnboardingForm } from "@/lib/onboarding";
 
 export type InvoiceFormState = { error?: string };
 
@@ -78,6 +79,13 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
     await fireAutomationTrigger("INVOICE_PAID", {
       contactId: invoice.contactId,
       summary: `${invoice.contact.businessName || `${invoice.contact.firstName} ${invoice.contact.lastName}`} — ${invoice.description} ($${invoice.amount})`,
+    });
+    // First payment triggers the self-service onboarding form automatically
+    // (onlyIfNeverSent guards against a second/recurring invoice re-firing
+    // it); failure here (e.g. no email on file) must never block the
+    // invoice update itself, so it's swallowed rather than surfaced.
+    await sendOnboardingForm(invoice.contactId, { onlyIfNeverSent: true }).catch((err) => {
+      console.error("[onboarding] failed to auto-send form", err);
     });
   }
 }
