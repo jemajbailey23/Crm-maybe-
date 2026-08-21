@@ -22,6 +22,7 @@ import { OnboardingFormStatus } from "../onboarding-status";
 import { AgreementPanel } from "../agreement-panel";
 import { BusinessProfileForm } from "../business-profile-form";
 import { BrandPanel } from "../brand-panel";
+import { ContactEmailPanel } from "../contact-email-panel";
 import {
   DealStageBadge,
   ActivityTypeBadge,
@@ -455,6 +456,15 @@ export default async function ContactDetailPage({
             label: "Activity",
             content: (
               <section className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+                {contact.email ? (
+                  <div className="mb-6">
+                    <ContactEmailPanel contactId={contact.id} to={contact.email} />
+                  </div>
+                ) : (
+                  <p className="mb-6 text-xs text-zinc-500">
+                    Add an email address on the Overview tab to send this contact email directly.
+                  </p>
+                )}
                 <h2 className="mb-4 text-sm font-semibold text-zinc-100">
                   Communication timeline
                 </h2>
